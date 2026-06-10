@@ -12,6 +12,7 @@ import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/generated/l10n.dart';
 import 'package:thingsboard_app/locator.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
+import 'package:thingsboard_app/utils/services/version_service/version_info.dart';
 import 'package:thingsboard_app/utils/services/device_info/i_device_info_service.dart';
 import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart';
 import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart';
@@ -26,6 +27,7 @@ class TbContext implements PopEntry {
   bool isUserLoaded = false;
   final _isAuthenticated = ValueNotifier<bool>(false);
   List<TwoFaProviderInfo>? twoFactorAuthProviders;
+  bool _dashboardAccessDenied = false;
   User? userDetails;
   HomeDashboardInfo? homeDashboard;
   VersionInfo? versionInfo;
@@ -152,8 +154,10 @@ class TbContext implements PopEntry {
 
   Future<bool> checkDasboardAccess(String id) async {
     try {
-      final dashboard = await tbClient.getDashboardService().getDashboard(id);
-      if (dashboard == null) {
+      final response = await tbClient
+          .getDashboardControllerApi()
+          .getDashboardById(dashboardId: id);
+      if (response.data == null) {
         return false;
       }
     } catch (e) {
@@ -172,24 +176,29 @@ class TbContext implements PopEntry {
         log.debug('authUser: ${tbClient.getAuthUser()}');
         if (tbClient.getAuthUser()!.userId != null) {
           try {
-            final mobileInfo = await tbClient
-                .getMobileService()
+            final mobileResp = await tbClient
+                .getMobileAppControllerApi()
                 .getUserMobileInfo(
-                  MobileInfoQuery(
-                    platformType: _deviceInfoService.getPlatformType(),
-                    packageName: _deviceInfoService.getApplicationId(),
-                  ),
+                  pkgName: _deviceInfoService.getApplicationId(),
+                  platform: _deviceInfoService.getPlatformType().name,
                 );
+            final mobileInfo = mobileResp.data;
             userDetails = mobileInfo?.user;
             homeDashboard = mobileInfo?.homeDashboardInfo;
-            versionInfo = mobileInfo?.versionInfo;
+            versionInfo =
+                mobileInfo?.versionInfo != null
+                    ? VersionInfo.fromMobileAppVersionInfo(
+                      mobileInfo!.versionInfo!,
+                    )
+                    : null;
             storeInfo = mobileInfo?.storeInfo;
+            _dashboardAccessDenied = false;
             if (_defaultDashboardId() != null) {
               final hasAccess = await checkDasboardAccess(
                 _defaultDashboardId()!,
               );
               if (!hasAccess) {
-                userDetails?.additionalInfo?['defaultDashboardId'] = null;
+                _dashboardAccessDenied = true;
               }
             }
           } catch (e) {
@@ -204,10 +213,11 @@ class TbContext implements PopEntry {
       } else {
         if (tbClient.isPreVerificationToken()) {
           log.debug('authUser: ${tbClient.getAuthUser()}');
-          twoFactorAuthProviders =
+          final tfaResp =
               await tbClient
-                  .getTwoFactorAuthService()
-                  .getAvailableLoginTwoFaProviders();
+                  .getTwoFactorAuthControllerApi()
+                  .getAvailableTwoFaProviderInfos();
+          twoFactorAuthProviders = tfaResp.data?.toList();
         } else {
           twoFactorAuthProviders = null;
         }
@@ -246,9 +256,7 @@ class TbContext implements PopEntry {
         await updateRouteState();
       }
 
-      if (isAuthenticated) {
-      
-      }
+      if (isAuthenticated) {}
     } catch (e, s) {
       log.error('TbContext.onUserLoaded: $e', e, s);
 
@@ -363,17 +371,18 @@ class TbContext implements PopEntry {
   }
 
   String? _defaultDashboardId() {
-    if (userDetails != null && userDetails!.additionalInfo != null) {
-      return userDetails!.additionalInfo!['defaultDashboardId']?.toString();
-    }
-    return null;
+    if (_dashboardAccessDenied) return null;
+    final info = userDetails?.additionalInfo;
+    if (info == null || !info.isMap) return null;
+    return info.asMap['defaultDashboardId']?.toString();
   }
 
   bool _userForceFullscreen() {
+    final info = userDetails?.additionalInfo;
     return tbClient.getAuthUser()!.isPublic! ||
-        (userDetails != null &&
-            userDetails!.additionalInfo != null &&
-            userDetails!.additionalInfo!['defaultDashboardFullscreen'] == true);
+        (info != null &&
+            info.isMap &&
+            info.asMap['defaultDashboardFullscreen'] == true);
   }
 
   static String userAgent() {

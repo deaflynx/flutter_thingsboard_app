@@ -41,7 +41,10 @@ abstract class Utils {
     final List<Map<String, dynamic>> stateObj = [{}];
     final params = <String, dynamic>{};
     if (entityId != null) {
-      params['entityId'] = entityId.toJson();
+      params['entityId'] = {
+        'entityType': entityId.entityType.name,
+        'id': entityId.id,
+      };
     }
     if (entityName != null) {
       params['entityName'] = entityName;
@@ -62,16 +65,16 @@ abstract class Utils {
     return Uri.encodeComponent(base64.encode(utf8.encode(encodedUri)));
   }
 
-  static String? contactToShortAddress(ContactBased contact) {
+  static String? contactToShortAddress(dynamic contact) {
     final addressParts = <String>[];
     if (contact.country != null) {
-      addressParts.add(contact.country!);
+      addressParts.add(contact.country as String);
     }
     if (contact.city != null) {
-      addressParts.add(contact.city!);
+      addressParts.add(contact.city as String);
     }
     if (contact.address != null) {
-      addressParts.add(contact.address!);
+      addressParts.add(contact.address as String);
     }
     if (addressParts.isNotEmpty) {
       return addressParts.join(', ');
