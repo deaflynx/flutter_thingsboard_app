@@ -65,6 +65,11 @@ class EspSoftApBloc extends Bloc<EspSoftApEvent, EspSoftApState> {
   final String pop;
   late final StreamSubscription subscription;
   int connectionRetries = 5;
+
+  /// Monotonic id of the current connection attempt. Bumped whenever the user
+  /// initiates one (Ready / Try again); the retry loop checks it at every
+  /// suspension point so a superseded attempt stops emitting (PROD-5940).
+  int _connectAttempt = 0;
   List<WifiNetwork> wiFis = [];
 
   Future<void> _onEvent(
@@ -73,7 +78,7 @@ class EspSoftApBloc extends Bloc<EspSoftApEvent, EspSoftApState> {
   ) async {
     switch (event) {
       case EspSoftApConnectToDeviceEvent():
-        await _onEspSoftApConnectToDeviceEvent(emit);
+        await _onEspSoftApConnectToDeviceEvent(emit, event);
 
       case EspSoftApStartProvisioningEvent():
        _onEspSoftApStartProvisioningEvent(emit, event);
@@ -188,15 +193,28 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
         } 
 
 }
-  Future<void> _onEspSoftApConnectToDeviceEvent(Emitter<EspSoftApState> emit) async {
-     emit(const EspSoftAppLoadingState());
-    
+  Future<void> _onEspSoftApConnectToDeviceEvent(
+    Emitter<EspSoftApState> emit,
+    EspSoftApConnectToDeviceEvent event,
+  ) async {
+    // A user-initiated tap (Ready / Try again) starts a fresh attempt: it
+    // supersedes any in-flight retry chain and resets the retry budget. An
+    // internal retry re-dispatch carries the generation of its own attempt.
+    if (event.attempt == null) {
+      _connectAttempt++;
+      connectionRetries = 5;
+    }
+    final attempt = event.attempt ?? _connectAttempt;
+
+    // Bail before touching the UI if a newer attempt has already taken over,
+    // so a stale retry can never repaint the screen behind the user's back.
+    if (isClosed || attempt != _connectAttempt) return;
+
+    emit(const EspSoftAppLoadingState());
+
     try {
       provisioning = await softApService
-          .startProvisioning(
-            hostname: '192.168.4.1:80',
-            pop: pop,
-          )
+          .startProvisioning(hostname: '192.168.4.1:80', pop: pop)
           .timeout(
             const Duration(seconds: 20),
             onTimeout: () => throw Exception(
@@ -205,28 +223,27 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
           );
     } catch (e) {
       logger.error('SoftAp Error connecting to device $e');
-      if (!isClosed) {
-        if (connectionRetries >= 0) {
-          logger.info(
-            'SoftAP is attempting to reconnect because iOS prompted the user '
-            'to grant Local Network permission, which cannot be triggered '
-            'in advance by the developer.',
-          );
-    
-          --connectionRetries;
-          logger.debug('Connection retries left $connectionRetries');
-          await Future.delayed(const Duration(seconds: 15));
-          add(const EspSoftApConnectToDeviceEvent());
-          return;
-        } else {
-          emit(const EspSoftApConnectionErrorState());
-        }
-    
-        connectionRetries = 5;
-        return;
+      if (isClosed || attempt != _connectAttempt) return;
+
+      if (connectionRetries >= 0) {
+        logger.info(
+          'SoftAP is attempting to reconnect because iOS prompted the user '
+          'to grant Local Network permission, which cannot be triggered '
+          'in advance by the developer.',
+        );
+
+        --connectionRetries;
+        logger.debug('Connection retries left $connectionRetries');
+        await Future.delayed(const Duration(seconds: 15));
+        if (isClosed || attempt != _connectAttempt) return;
+        add(EspSoftApConnectToDeviceEvent(attempt: attempt));
+      } else {
+        emit(const EspSoftApConnectionErrorState());
       }
+      return;
     }
-    
+
+    if (isClosed || attempt != _connectAttempt) return;
     await scanWifi(emit);
   }
 
