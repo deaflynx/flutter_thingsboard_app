@@ -59,6 +59,11 @@ class EspSoftApBloc extends Bloc<EspSoftApEvent, EspSoftApState> {
 
   final ISoftApService softApService;
   late Provisioning provisioning;
+
+  /// Whether [provisioning] has been assigned. The field is `late`, so reading
+  /// it before a successful `startProvisioning` throws — which happened in
+  /// [close] when the user exited after a failed connection.
+  bool _provisioningInitialized = false;
   final TbLogger logger;
   final ICommunicationService communicationService;
   final String deviceName;
@@ -240,6 +245,7 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
               'SoftAp startProvisioning timeout reached.',
             ),
           );
+      _provisioningInitialized = true;
     } catch (e) {
       logger.error('SoftAp Error connecting to device $e');
       if (isClosed || attempt != _connectAttempt) return;
@@ -296,7 +302,9 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
 
   @override
   Future<void> close() {
-    provisioning.dispose();
+    if (_provisioningInitialized) {
+      provisioning.dispose();
+    }
     subscription.cancel();
     return super.close();
   }
