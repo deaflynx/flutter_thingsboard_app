@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:plugin_wifi_connect/plugin_wifi_connect.dart';
 import 'package:thingsboard_app/config/themes/tb_text_styles.dart';
 import 'package:thingsboard_app/constants/assets_path.dart';
 import 'package:thingsboard_app/generated/l10n.dart';
@@ -182,6 +185,11 @@ class _EspSoftApViewState extends State<EspSoftApView> {
 
   @override
   void dispose() {
+    // Safety net: ensure the process is not left bound to any Wi-Fi network
+    // when the provisioning flow is torn down, so the next session can reach
+    // the device's SoftAP again (see PROD-5897). Harmless when nothing is
+    // bound (disconnect returns false).
+    unawaited(PluginWifiConnect.disconnect());
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,

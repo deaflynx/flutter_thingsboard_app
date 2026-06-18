@@ -146,6 +146,14 @@ class DeviceProvisioningBloc
           }
 
           emit(DeviceProvisioningClaimingErrorState(message));
+        } finally {
+          // Release the home Wi-Fi binding acquired above for the claim API
+          // call. On Android, connectToSecureNetwork binds the whole process
+          // to that network (bindProcessToNetwork); leaving it bound means a
+          // later provisioning attempt can no longer reach the device's SoftAP
+          // at 192.168.4.1 ("Machine is not on the network"), so re-entry after
+          // a failed claim shows "Unable connect to device" (PROD-5897).
+          unawaited(PluginWifiConnect.disconnect());
         }
 
       case ErrorDuringProvisioningEvent():
