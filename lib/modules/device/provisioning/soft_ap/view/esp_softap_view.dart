@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:open_settings_plus/core/open_settings_plus.dart';
 import 'package:plugin_wifi_connect/plugin_wifi_connect.dart';
 import 'package:thingsboard_app/config/themes/tb_text_styles.dart';
 import 'package:thingsboard_app/constants/assets_path.dart';
@@ -99,10 +101,33 @@ class _EspSoftApViewState extends State<EspSoftApView> {
                 child: () {
                   switch (state) {
                     case EspSoftAppLoadingState():
-                      return const SizedBox.expand(
+                      return SizedBox.expand(
                         child: ColoredBox(
-                          color: Color(0x99FFFFFF),
-                          child: Center(child: TbProgressIndicator(size: 50)),
+                          color: const Color(0x99FFFFFF),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TbProgressIndicator(size: 50),
+                                if (state.attempt != null) ...[
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    S
+                                        .of(context)
+                                        .tryingToConnectToDeviceAttempt(
+                                          state.attempt!,
+                                        ),
+                                    textAlign: TextAlign.center,
+                                    style: TbTextStyles.bodyMedium.copyWith(
+                                      color: Colors.black.withValues(
+                                        alpha: .54,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         ),
                       );
 
@@ -139,10 +164,16 @@ class _EspSoftApViewState extends State<EspSoftApView> {
                             () => context.read<EspSoftApBloc>().add(
                               const EspSoftApConnectToDeviceEvent(),
                             ),
+                        primaryActionLabel: S.of(context).openWifiSettings,
+                        onPrimaryAction:
+                            () =>
+                                Platform.isAndroid
+                                    ? const OpenSettingsPlusAndroid().wifi()
+                                    : const OpenSettingsPlusIOS().wifi(),
                         assetPath: ThingsboardImage.mobileConnectionError,
                         message: S
                             .of(context)
-                            .connectionToTheWifiNetworkFailednpleaseEnsureThatYour(
+                            .couldntReachDeviceEnsureConnectedToWifi(
                               widget.name,
                             ),
                       );
@@ -156,9 +187,7 @@ class _EspSoftApViewState extends State<EspSoftApView> {
                         assetPath: ThingsboardImage.mobileConnectionError,
                         message: S
                             .of(context)
-                            .unableConnectToWifiBecauseNetworksWasntFoundByDevice(
-                              widget.name,
-                            ),
+                            .deviceCouldntFindNearbyWifiNetworks(widget.name),
                       );
 
                     case EspSoftApProvisioningDoneState():

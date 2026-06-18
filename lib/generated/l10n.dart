@@ -2097,6 +2097,36 @@ class S {
     );
   }
 
+  /// `Trying to connect to the device…\nAttempt {attempt}`
+  String tryingToConnectToDeviceAttempt(int attempt) {
+    return Intl.message(
+      'Trying to connect to the device…\nAttempt $attempt',
+      name: 'tryingToConnectToDeviceAttempt',
+      desc: '',
+      args: [attempt],
+    );
+  }
+
+  /// `We couldn't reach the device.\nMake sure your phone is connected to the "{name}" Wi-Fi network in your settings, then tap Try again.`
+  String couldntReachDeviceEnsureConnectedToWifi(String name) {
+    return Intl.message(
+      'We couldn\'t reach the device.\nMake sure your phone is connected to the "$name" Wi-Fi network in your settings, then tap Try again.',
+      name: 'couldntReachDeviceEnsureConnectedToWifi',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `The "{name}" device couldn't find any nearby Wi-Fi networks.\nMake sure your Wi-Fi router is powered on and within range, then tap Try again.`
+  String deviceCouldntFindNearbyWifiNetworks(String name) {
+    return Intl.message(
+      'The "$name" device couldn\'t find any nearby Wi-Fi networks.\nMake sure your Wi-Fi router is powered on and within range, then tap Try again.',
+      name: 'deviceCouldntFindNearbyWifiNetworks',
+      desc: '',
+      args: [name],
+    );
+  }
+
   /// `Please follow the next steps to connect your phone to device`
   String get pleaseFollowTheNextStepsToConnectYourPhoneTo {
     return Intl.message(

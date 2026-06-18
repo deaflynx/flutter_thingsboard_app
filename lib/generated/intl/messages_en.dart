@@ -42,11 +42,17 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m7(name) =>
       "Connection to the ${name} Wi-Fi network failed.\nPlease ensure that your phone is connected to the device Wi-Fi network and that Local Network access is enabled for this app in your device settings.";
 
+  static String m30(name) =>
+      "We couldn\'t reach the device.\nMake sure your phone is connected to the \"${name}\" Wi-Fi network in your settings, then tap Try again.";
+
   static String m8(count) =>
       "${Intl.plural(count, one: 'Dashboard', other: 'Dashboards')}";
 
   static String m9(count) =>
       "${Intl.plural(count, one: 'Delete 1 notification?', other: 'Delete ${count} notifications?')}";
+
+  static String m31(name) =>
+      "The \"${name}\" device couldn\'t find any nearby Wi-Fi networks.\nMake sure your Wi-Fi router is powered on and within range, then tap Try again.";
 
   static String m10(count) =>
       "${Intl.plural(count, one: 'Device', other: 'Devices')}";
@@ -91,6 +97,9 @@ class MessageLookup extends MessageLookupByLibrary {
 
   static String m25(contact) =>
       "A security code has been sent to your phone at ${contact}.";
+
+  static String m32(attempt) =>
+      "Trying to connect to the device…\nAttempt ${attempt}";
 
   static String m26(name) =>
       "Unable connect to Wi-Fi because networks wasn\'t found by device ${name}";
@@ -341,6 +350,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Copy 32-digits key to your authentication app or scan QR-code below",
         ),
+    "couldntReachDeviceEnsureConnectedToWifi": m30,
     "country": MessageLookupByLibrary.simpleMessage("Country"),
     "createAccount": MessageLookupByLibrary.simpleMessage("Create Account"),
     "createPassword": MessageLookupByLibrary.simpleMessage("Create a password"),
@@ -358,6 +368,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "deleteComment": MessageLookupByLibrary.simpleMessage("Delete comment"),
     "deleteSelectedNotifications": m9,
     "details": MessageLookupByLibrary.simpleMessage("Details"),
+    "deviceCouldntFindNearbyWifiNetworks": m31,
     "deviceList": MessageLookupByLibrary.simpleMessage("Device list"),
     "deviceNotAbleToFindWifiNearby": MessageLookupByLibrary.simpleMessage(
       "Device not able to find Wi-Fi nearby",
@@ -755,6 +766,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "tryRefreshing": MessageLookupByLibrary.simpleMessage(
       "Please try refreshing",
     ),
+    "tryingToConnectToDeviceAttempt": m32,
     "twofactorAuthentication": MessageLookupByLibrary.simpleMessage(
       "Two-factor authentication",
     ),
