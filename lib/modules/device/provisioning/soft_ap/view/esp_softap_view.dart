@@ -146,7 +146,10 @@ class _EspSoftApViewState extends State<EspSoftApView> {
 
                     case EspSoftApWifiNetworksNotFoundState():
                       return EspSoftApConnectionErrorView(
-                        onTryAgain: () {},
+                        onTryAgain:
+                            () => context.read<EspSoftApBloc>().add(
+                              const EspSoftApConnectToDeviceEvent(),
+                            ),
                         assetPath: ThingsboardImage.mobileConnectionError,
                         message: S
                             .of(context)
