@@ -34,7 +34,12 @@ class ThingsboardAppRouter {
     final result = await context?.push(
       '$path${query.isEmpty ? query : '?$query'}',
     );
-    return result as T?;
+    // Defensive cast: a navigation result is whatever the popped route returns
+    // and can legitimately be of an unexpected type (e.g. an imperative-push
+    // completer crossing under GoRouter can deliver another route's result).
+    // A blind `result as T?` turns that into a hard TypeError that crashes the
+    // caller; returning null instead lets the caller treat it as "no result".
+    return result is T ? result : null;
   }
 
   Future<void> pop<T>([T? result, BuildContext? context]) async {
