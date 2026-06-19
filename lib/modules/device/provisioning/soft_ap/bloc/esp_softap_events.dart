@@ -8,7 +8,14 @@ sealed class EspSoftApEvent extends Equatable {
 }
 
 final class EspSoftApConnectToDeviceEvent extends EspSoftApEvent {
-  const EspSoftApConnectToDeviceEvent();
+  const EspSoftApConnectToDeviceEvent({this.attempt});
+
+  /// `null` for user-initiated attempts (Ready / Try again), which start a
+  /// fresh connection attempt and supersede any in-flight one. The internal
+  /// retry loop re-dispatches with the generation of the attempt that
+  /// scheduled it, so a chain that has been superseded can bail out instead of
+  /// driving the UI behind the user's back (PROD-5940).
+  final int? attempt;
 
   @override
   List<Object?> get props => [double.nan];

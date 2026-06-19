@@ -276,6 +276,30 @@
   "deviceNotAbleToFindWifiNearby": "Device not able to find Wi-Fi nearby",
   "connectionToTheWifiNetworkFailednpleaseEnsureThatYour": "Connection to the {name} Wi-Fi network failed.\nPlease ensure that your phone is connected to the device Wi-Fi network and that Local Network access is enabled for this app in your device settings.",
   "unableConnectToWifiBecauseNetworksWasntFoundByDevice": "Unable connect to Wi-Fi because networks wasn't found by device {name}",
+  "tryingToConnectToDeviceAttempt": "Trying to connect to the device…\nAttempt {attempt}",
+  "@tryingToConnectToDeviceAttempt": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "couldntReachDeviceEnsureConnectedToWifi": "We couldn't reach the device.\nMake sure your phone is connected to the \"{name}\" Wi-Fi network in your settings, then tap Try again.",
+  "@couldntReachDeviceEnsureConnectedToWifi": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceCouldntFindNearbyWifiNetworks": "The \"{name}\" device couldn't find any nearby Wi-Fi networks.\nMake sure your Wi-Fi router is powered on and within range, then tap Try again.",
+  "@deviceCouldntFindNearbyWifiNetworks": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "pleaseFollowTheNextStepsToConnectYourPhoneTo": "Please follow the next steps to connect your phone to device",
   "connectToWifiSimilarToWifiname": "Connect to Wi-Fi similar to {wifiName}",
   "ready": "Ready",

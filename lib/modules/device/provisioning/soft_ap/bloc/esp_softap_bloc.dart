@@ -59,12 +59,40 @@ class EspSoftApBloc extends Bloc<EspSoftApEvent, EspSoftApState> {
 
   final ISoftApService softApService;
   late Provisioning provisioning;
+
+  /// Whether [provisioning] has been assigned. The field is `late`, so reading
+  /// it before a successful `startProvisioning` throws — which happened in
+  /// [close] when the user exited after a failed connection.
+  bool _provisioningInitialized = false;
   final TbLogger logger;
   final ICommunicationService communicationService;
   final String deviceName;
   final String pop;
   late final StreamSubscription subscription;
-  int connectionRetries = 5;
+
+  /// Retries remaining for the in-progress connection attempt. Reset per
+  /// platform on each user-initiated attempt (see [_maxConnectionRetries]).
+  int connectionRetries = 0;
+
+  /// Retries after the first attempt before giving up. iOS needs a few to ride
+  /// out the one-time "Local Network" permission prompt (the first local-network
+  /// access fails while that system dialog is up, then a retry succeeds once the
+  /// user taps Allow). Android has no such prompt, so it fails fast and surfaces
+  /// the actionable error screen in a few seconds instead of ~90s (PROD-6042).
+  int get _maxConnectionRetries => Platform.isIOS ? 4 : 1;
+
+  /// Upper bound for the exponential backoff between retries.
+  static const _maxBackoffSeconds = 8;
+
+  /// Monotonic id of the current connection attempt. Bumped whenever the user
+  /// initiates one (Ready / Try again); the retry loop checks it at every
+  /// suspension point so a superseded attempt stops emitting (PROD-5940).
+  int _connectAttempt = 0;
+
+  /// 1-based number of the connection try currently in progress, shown on the
+  /// loading screen so the (intentionally long) retry sequence tells the user
+  /// what is happening instead of a bare spinner (PROD-6042).
+  int _attemptNo = 0;
   List<WifiNetwork> wiFis = [];
 
   Future<void> _onEvent(
@@ -73,7 +101,7 @@ class EspSoftApBloc extends Bloc<EspSoftApEvent, EspSoftApState> {
   ) async {
     switch (event) {
       case EspSoftApConnectToDeviceEvent():
-        await _onEspSoftApConnectToDeviceEvent(emit);
+        await _onEspSoftApConnectToDeviceEvent(emit, event);
 
       case EspSoftApStartProvisioningEvent():
        _onEspSoftApStartProvisioningEvent(emit, event);
@@ -188,45 +216,64 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
         } 
 
 }
-  Future<void> _onEspSoftApConnectToDeviceEvent(Emitter<EspSoftApState> emit) async {
-     emit(const EspSoftAppLoadingState());
-    
+  Future<void> _onEspSoftApConnectToDeviceEvent(
+    Emitter<EspSoftApState> emit,
+    EspSoftApConnectToDeviceEvent event,
+  ) async {
+    // A user-initiated tap (Ready / Try again) starts a fresh attempt: it
+    // supersedes any in-flight retry chain and resets the retry budget. An
+    // internal retry re-dispatch carries the generation of its own attempt.
+    if (event.attempt == null) {
+      _connectAttempt++;
+      connectionRetries = _maxConnectionRetries;
+      _attemptNo = 0;
+    }
+    final attempt = event.attempt ?? _connectAttempt;
+
+    // Bail before touching the UI if a newer attempt has already taken over,
+    // so a stale retry can never repaint the screen behind the user's back.
+    if (isClosed || attempt != _connectAttempt) return;
+
+    emit(EspSoftAppLoadingState(attempt: ++_attemptNo));
+
     try {
       provisioning = await softApService
-          .startProvisioning(
-            hostname: '192.168.4.1:80',
-            pop: pop,
-          )
+          .startProvisioning(hostname: '192.168.4.1:80', pop: pop)
           .timeout(
             const Duration(seconds: 20),
             onTimeout: () => throw Exception(
               'SoftAp startProvisioning timeout reached.',
             ),
           );
+      _provisioningInitialized = true;
     } catch (e) {
       logger.error('SoftAp Error connecting to device $e');
-      if (!isClosed) {
-        if (connectionRetries >= 0) {
-          logger.info(
-            'SoftAP is attempting to reconnect because iOS prompted the user '
-            'to grant Local Network permission, which cannot be triggered '
-            'in advance by the developer.',
-          );
-    
-          --connectionRetries;
-          logger.debug('Connection retries left $connectionRetries');
-          await Future.delayed(const Duration(seconds: 15));
-          add(const EspSoftApConnectToDeviceEvent());
-          return;
-        } else {
-          emit(const EspSoftApConnectionErrorState());
-        }
-    
-        connectionRetries = 5;
-        return;
+      if (isClosed || attempt != _connectAttempt) return;
+
+      if (connectionRetries > 0) {
+        // Exponential backoff (1s, 2s, 4s, 8s…) capped at [_maxBackoffSeconds].
+        // Fast early retries catch the moment the iOS user grants Local Network
+        // permission; the bounded total avoids the old ~90s dead wait.
+        final retryIndex = _maxConnectionRetries - connectionRetries;
+        final backoff = 1 << retryIndex;
+        final delaySeconds =
+            backoff > _maxBackoffSeconds ? _maxBackoffSeconds : backoff;
+
+        --connectionRetries;
+        logger.debug(
+          'SoftAp retrying connection in ${delaySeconds}s, '
+          'retries left $connectionRetries',
+        );
+        await Future.delayed(Duration(seconds: delaySeconds));
+        if (isClosed || attempt != _connectAttempt) return;
+        add(EspSoftApConnectToDeviceEvent(attempt: attempt));
+      } else {
+        emit(const EspSoftApConnectionErrorState());
       }
+      return;
     }
-    
+
+    if (isClosed || attempt != _connectAttempt) return;
     await scanWifi(emit);
   }
 
@@ -255,7 +302,9 @@ Future<void> _onEspSoftApStartProvisioningEvent(Emitter<EspSoftApState> emit, Es
 
   @override
   Future<void> close() {
-    provisioning.dispose();
+    if (_provisioningInitialized) {
+      provisioning.dispose();
+    }
     subscription.cancel();
     return super.close();
   }

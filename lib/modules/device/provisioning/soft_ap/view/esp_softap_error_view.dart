@@ -10,12 +10,20 @@ class EspSoftApConnectionErrorView extends StatelessWidget {
     required this.assetPath,
     required this.message,
     this.onTryAgain,
+    this.primaryActionLabel,
+    this.onPrimaryAction,
     super.key,
   });
 
   final String assetPath;
   final String message;
   final VoidCallback? onTryAgain;
+
+  /// Primary button label/action. When omitted, falls back to opening the app
+  /// settings (used by the Wi-Fi-not-found screen). The connection-error screen
+  /// passes "Open Wi-Fi settings" so the user can join the device's network.
+  final String? primaryActionLabel;
+  final VoidCallback? onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +49,11 @@ class EspSoftApConnectionErrorView extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             ),
+            onPressed: onPrimaryAction ?? () => openAppSettings(),
             child: Text(
-              S.of(context).openAppSettings,
+              primaryActionLabel ?? S.of(context).openAppSettings,
               style: TbTextStyles.labelMedium.copyWith(color: Colors.white),
             ),
-            onPressed: () => openAppSettings(),
           ),
         ),
         const SizedBox(height: 16),

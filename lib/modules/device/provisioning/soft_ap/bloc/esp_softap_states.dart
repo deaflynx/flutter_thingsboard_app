@@ -9,7 +9,14 @@ sealed class EspSoftApState extends Equatable {
 }
 
 final class EspSoftAppLoadingState extends EspSoftApState {
-  const EspSoftAppLoadingState();
+  const EspSoftAppLoadingState({this.attempt});
+
+  /// 1-based attempt number shown to the user while connecting to the device.
+  /// `null` for generic loading that isn't part of the connection sequence.
+  final int? attempt;
+
+  @override
+  List<Object?> get props => [attempt];
 }
 
 final class EspSoftApConnectionErrorState extends EspSoftApState {

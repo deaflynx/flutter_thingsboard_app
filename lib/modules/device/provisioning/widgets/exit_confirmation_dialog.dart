@@ -9,11 +9,11 @@ class ExitConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TbAlertDialog(
-      title:  Text(S.of(context).exitDeviceProvisioning),
+      title: Text(S.of(context).exitDeviceProvisioning),
       content: Text(S.of(context).areYouSure),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(false),
           child: Text(
             S.of(context).cancel.toUpperCase(),
             style: TbTextStyles.labelLarge.copyWith(
@@ -22,10 +22,12 @@ class ExitConfirmationDialog extends StatelessWidget {
           ),
         ),
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).pop();
-          },
+          // Returns `true` so the caller can pop the provisioning page itself,
+          // guarded by `canPop`. Previously this popped twice unconditionally;
+          // the second pop emptied the navigator stack and crashed GoRouter
+          // ("popped the last page off of the stack") when the provisioning
+          // page was the only remaining route.
+          onPressed: () => Navigator.of(context).pop(true),
           child: Text(
             S.of(context).yes.toUpperCase(),
             style: TbTextStyles.labelLarge.copyWith(

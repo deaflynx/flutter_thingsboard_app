@@ -37,6 +37,13 @@ class QrCodeScannerPage extends HookWidget {
 
     final controller = useMemoized(() => MobileScannerController());
 
+    // One-shot guard: MobileScanner.onDetect fires on every camera frame, so a
+    // barcode is reported several times in a row. Without this, the first
+    // detection pops this route (correct) and a lingering second detection pops
+    // again — popping whatever route was pushed next (e.g. the provisioning
+    // page) with a Barcode result, tearing it down. Pop exactly once.
+    final hasReturned = useRef(false);
+
     // Check camera permission initially
     useEffect(() {
       Future checkCameraPermission() async {
@@ -91,12 +98,11 @@ class QrCodeScannerPage extends HookWidget {
             errorBuilder: (p0, p1) => const ScannerErrorWidget(),
             controller: controller,
             onDetect: (barcodes) {
+              if (hasReturned.value) return;
               if (barcodes.barcodes.isNotEmpty) {
                 if (context.mounted) {
-             context.pop(
-                    barcodes.barcodes.first,
-                   
-                  );
+                  hasReturned.value = true;
+                  context.pop(barcodes.barcodes.first);
                 }
               }
             },

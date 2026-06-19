@@ -83,12 +83,16 @@ class _EspBleProvisioningViewState
                   ),
                 ),
                 leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-                  onPressed:
-                      () => showDialog(
-                        context: context,
-                        builder: (_) => const ExitConfirmationDialog(),
-                      ),
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () async {
+                    final shouldExit = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => const ExitConfirmationDialog(),
+                    );
+                    if ((shouldExit ?? false) && context.mounted) {
+                      Navigator.of(context).maybePop();
+                    }
+                  },
                 ),
               );
             }(),
