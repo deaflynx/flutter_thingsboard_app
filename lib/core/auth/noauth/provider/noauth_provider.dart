@@ -31,6 +31,10 @@ class NoauthProvider extends _$NoauthProvider {
 
   Future<void> switchEndpoint(SwitchEndpointParams params) async {
     final _client = getIt<ITbClientService>().client;
+    // Silence benign background 401/403 toasts while the switch settles: the
+    // new session loads data asynchronously and a rejecting response can arrive
+    // after the switch already reported success (PROD-8200).
+    getIt<ITbClientService>().suppressErrorNotifications = true;
     try {
       final uri = params.data.uri;
       final host = params.data.host ?? uri.origin;
@@ -117,13 +121,15 @@ class NoauthProvider extends _$NoauthProvider {
       // 'setUserFromJwtToken'. This code will be executed twice.
       await getIt<ITbClientService>().reInit(
         endpoint: host,
-        onDone: ()  {
+        onDone: () {
           ref.invalidate(oauthProvider);
           //  await ref.read(loginProvider.notifier).handleUserLoaded();
         },
         onAuthError: (e) {
-          _logger.error('SwitchEndpointUseCase:onError $e');
-          throw e;
+          // Do NOT rethrow: this runs inside the client's async onError
+          // callback, so a throw escapes as an unhandled exception and Flutter
+          // renders the raw stacktrace on the UI (PROD-8200). Log only.
+          _logger.error('SwitchEndpointUseCase:onAuthError $e', e);
         },
       );
       state = NoAuthState(error: null, isDone: true, message: '');
@@ -140,6 +146,13 @@ class NoauthProvider extends _$NoauthProvider {
       }
       _logger.error('SwitchEndpointUseCase:catch $e', e);
       state = NoAuthState(error: e, isDone: false, message: e.toString());
+    } finally {
+      // The rejecting response can arrive after the switch reports done, so
+      // keep suppression up briefly, then restore normal error toasts
+      // (PROD-8200).
+      Future.delayed(const Duration(seconds: 8), () {
+        getIt<ITbClientService>().suppressErrorNotifications = false;
+      });
     }
   }
 
@@ -180,8 +193,9 @@ class NoauthProvider extends _$NoauthProvider {
       endpoint: endpoint,
       onDone: () {},
       onAuthError: (e) {
-        _logger.error('SwitchEndpointUseCase:onError $e');
-        throw e;
+        // No rethrow: see switchEndpoint's onAuthError — a throw here escapes
+        // the async client callback as an unhandled exception (PROD-8200).
+        _logger.error('SwitchEndpointUseCaseReset:onAuthError $e', e);
       },
     );
   }
