@@ -18,6 +18,13 @@ class TbClientService implements ITbClientService {
   @override
   ThingsboardClient get client => _client;
   final IOverlayService _overlayService = getIt();
+
+  bool _suppressErrorNotifications = false;
+  @override
+  bool get suppressErrorNotifications => _suppressErrorNotifications;
+  @override
+  set suppressErrorNotifications(bool value) =>
+      _suppressErrorNotifications = value;
   @override
   Future<void> init() async {
     final endpoint = await getIt<IEndpointService>().getEndpoint();
@@ -76,6 +83,12 @@ class TbClientService implements ITbClientService {
 
   void onClientError(ThingsboardError e) {
     log('client on error: $e');
+    if (_suppressErrorNotifications) {
+      // An endpoint switch is in progress; the new session loads data in the
+      // background and benign 401/403 responses must not surface as toasts on
+      // a successful switch (PROD-8200).
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Utils.isConnectionError(e)) {
         _overlayService.showAlertDialog(

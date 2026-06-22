@@ -22,7 +22,10 @@ part 'login_provider.g.dart';
 
 @riverpod
 class Login extends _$Login {
-  final _tbClient = getIt<ITbClientService>().client;
+  // Read the live client each time: after a QR host switch the client is
+  // re-created (ITbClientService.reInit), so a captured reference would go
+  // stale and hit the new host with the old token -> 401 (PROD-8200).
+  ThingsboardClient get _tbClient => getIt<ITbClientService>().client;
   final _deviceInfoService = getIt<IDeviceInfoService>();
   late final StreamSubscription<UserLoadedEvent> _listener;
   final _overlayService = getIt<IOverlayService>();
@@ -31,11 +34,25 @@ class Login extends _$Login {
     _listener = getIt<ICommunicationService>().on<UserLoadedEvent>().listen((
       _,
     ) async {
-      await handleUserLoaded();
+      await _safeHandleUserLoaded();
     });
     ref.onDispose(() => _listener.cancel());
-    Future(() => handleUserLoaded());
+    Future(() => _safeHandleUserLoaded());
     return const LoginState(isUserLoaded: false);
+  }
+
+  // Wraps handleUserLoaded() so an auth failure during user load (e.g. a
+  // QR-switch to a host the account cannot access) is reported as a handled
+  // error instead of escaping the Future as an unhandled exception that
+  // Flutter renders as a raw stacktrace (PROD-8200). The client's onError
+  // callback already surfaces a user-facing notification.
+  Future<void> _safeHandleUserLoaded() async {
+    try {
+      await handleUserLoaded();
+    } catch (e, st) {
+      log('handleUserLoaded failed: $e\n$st');
+      state = const LoginState(isUserLoaded: false);
+    }
   }
 
   Future<void> logout() async {
