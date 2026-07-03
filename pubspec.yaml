@@ -12,7 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  thingsboard_client: ^4.2.1
+  thingsboard_ce_client:
+    path: ../thingsboard-dart-client/ce
   intl: ^0.19.0
   flutter_secure_storage: ^9.0.0
   flutter_speed_dial: ^7.0.0
