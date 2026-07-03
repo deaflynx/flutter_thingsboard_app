@@ -10,7 +10,12 @@ mixin LocationActionResultMapper {
     return switch (fix) {
       LocationSuccess(:final position) =>
         WidgetMobileActionResult.successResult(
-          MobileActionResult.location(position.latitude, position.longitude),
+          MobileActionResult.location(
+            position.latitude,
+            position.longitude,
+            accuracy: position.accuracy,
+            ts: position.timestamp?.millisecondsSinceEpoch,
+          ),
         ),
       LocationServicesDisabled() => WidgetMobileActionResult.errorResult(
         'Location services are disabled.',
