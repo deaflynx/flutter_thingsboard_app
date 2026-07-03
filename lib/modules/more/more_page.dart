@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import 'package:thingsboard_app/config/routes/v2/routes_config/routes/location_tracking_routes.dart';
 import 'package:thingsboard_app/config/themes/app_colors.dart';
 import 'package:thingsboard_app/core/auth/login/provider/login_provider.dart';
 import 'package:thingsboard_app/core/usecases/user_details_usecase.dart';
@@ -45,40 +47,53 @@ class MorePage extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ProfileWidget(userDetails: userDetails, user: login.user),
-                if(items.isNotEmpty)
-                ...[Divider(
-                  color: Colors.black.withValues(alpha: .05),
-                  thickness: 1,
-                  height: 0,
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children:
-                          items
-                              .map(
-                                (e) => MoreMenuItemWidget(
-                                  TbMainNavigationItem(
-                                    title: NavigationHelper.getLocalizedTitle(
-                                      context,
-                                      e.id,
-                                      e.path,
-                                      e.title,
+                if (items.isNotEmpty) ...[
+                  Divider(
+                    color: Colors.black.withValues(alpha: .05),
+                    thickness: 1,
+                    height: 0,
+                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children:
+                            items
+                                .map(
+                                  (e) => MoreMenuItemWidget(
+                                    TbMainNavigationItem(
+                                      title: NavigationHelper.getLocalizedTitle(
+                                        context,
+                                        e.id,
+                                        e.path,
+                                        e.title,
+                                      ),
+                                      icon: e.icon,
+                                      path: e.path,
+                                      showAdditionalIcon:
+                                          e.showNotificationBadge,
                                     ),
-                                    icon: e.icon,
-                                    path: e.path,
-                                    showAdditionalIcon: e.showNotificationBadge,
+                                    onTap: () {
+                                      context.push(e.path);
+                                    },
                                   ),
-                                  onTap: () {
-                                    context.push(e.path);
-                                  },
-                                ),
-                              )
-                              .toList(),
+                                )
+                                .toList(),
+                      ),
                     ),
                   ),
-                ),
-               ],
+                ],
+                // Debug-only entry to the phase 1a GPS tracking spike page.
+                if (kDebugMode)
+                  MoreMenuItemWidget(
+                    const TbMainNavigationItem(
+                      title: 'GPS tracking spike',
+                      icon: Icons.gps_fixed,
+                      path: LocationTrackingRoutes.liveTrackingSpike,
+                    ),
+                    onTap: () {
+                      context.push(LocationTrackingRoutes.liveTrackingSpike);
+                    },
+                  ),
                 Divider(
                   color: Colors.black.withValues(alpha: .05),
                   thickness: 1,
@@ -92,8 +107,8 @@ class MorePage extends HookConsumerWidget {
                   ),
                   showTrailing: false,
                   color: AppColors.textError,
-                  onTap: () async  {
-                 await    ref.read(loginProvider.notifier).logout();
+                  onTap: () async {
+                    await ref.read(loginProvider.notifier).logout();
                   },
                 ),
               ],

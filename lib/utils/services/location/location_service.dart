@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/utils/services/location/i_location_service.dart';
 import 'package:thingsboard_app/utils/services/location/model/geo_position.dart';
 import 'package:thingsboard_app/utils/services/location/model/location_fix.dart';
+import 'package:thingsboard_app/utils/services/location/model/location_stream_settings.dart';
 
 class LocationService implements ILocationService {
   LocationService({required TbLogger logger, GeolocatorPlatform? geolocator})
@@ -35,7 +37,9 @@ class LocationService implements ILocationService {
   }
 
   @override
-  Stream<LocationFix> positionStream({double distanceFilterMeters = 0}) async* {
+  Stream<LocationFix> positionStream({
+    LocationStreamSettings settings = const LocationStreamSettings(),
+  }) async* {
     final unavailable = await _ensureAvailable();
     if (unavailable != null) {
       yield unavailable;
@@ -43,10 +47,7 @@ class LocationService implements ILocationService {
     }
 
     final raw = _geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: distanceFilterMeters.round(),
-      ),
+      locationSettings: _toLocationSettings(settings),
     );
 
     yield* raw.transform(
@@ -87,6 +88,42 @@ class LocationService implements ILocationService {
       return const LocationPermissionDeniedForever();
     }
     return null;
+  }
+
+  LocationSettings _toLocationSettings(LocationStreamSettings settings) {
+    final accuracy = switch (settings.accuracy) {
+      LocationAccuracyLevel.low => LocationAccuracy.low,
+      LocationAccuracyLevel.balanced => LocationAccuracy.medium,
+      LocationAccuracyLevel.high => LocationAccuracy.high,
+    };
+    final background = settings.background;
+
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSettings(
+        accuracy: accuracy,
+        distanceFilter: settings.distanceFilterMeters,
+        intervalDuration: settings.interval,
+        foregroundNotificationConfig:
+            background == null
+                ? null
+                : ForegroundNotificationConfig(
+                  notificationTitle: background.notificationTitle,
+                  notificationText: background.notificationText,
+                  enableWakeLock: true,
+                  setOngoing: true,
+                ),
+      ),
+      TargetPlatform.iOS => AppleSettings(
+        accuracy: accuracy,
+        distanceFilter: settings.distanceFilterMeters,
+        allowBackgroundLocationUpdates: background != null,
+        showBackgroundLocationIndicator: true,
+      ),
+      _ => LocationSettings(
+        accuracy: accuracy,
+        distanceFilter: settings.distanceFilterMeters,
+      ),
+    };
   }
 
   GeoPosition _toGeoPosition(Position p) => GeoPosition(
