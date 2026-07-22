@@ -2,10 +2,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- tools:remove strips any maxSdkVersion a dependency's manifest imposes;
+         live GPS tracking needs FINE location on all API levels, including 36+. -->
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="35"
-        tools:replace="android:maxSdkVersion" />
+        tools:remove="android:maxSdkVersion" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
