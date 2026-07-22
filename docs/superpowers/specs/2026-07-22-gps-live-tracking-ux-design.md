@@ -2,7 +2,7 @@
 
 **Status:** design — pending user review
 **Date:** 2026-07-22
-**Repos:** Flutter `flutter_thingsboard_app` only (mobile-only; no ui-ngx / wire-protocol changes)
+**Repos:** Flutter `flutter_thingsboard_app` (UX + persistence) **and** `thingsboard` (backend `DefaultPageId` + ui-ngx bundle-layout editor) for the bundle-gated menu entry. No wire-protocol changes.
 **Predecessor:** Phase 1c — `docs/superpowers/specs/2026-07-03-gps-tracking-design.md`, plan `docs/superpowers/plans/2026-07-03-gps-live-tracking.md`
 
 ## Goal
@@ -10,7 +10,7 @@
 Polish the phase 1c live-tracking experience on the mobile app:
 
 1. Show the tracking **target as a human-friendly entity name** instead of `DEVICE <uuid>`.
-2. Replace the debug-only **"GPS tracking spike"** menu entry with a permanent **"Live location tracking"** page.
+2. Replace the debug-only **"GPS tracking spike"** menu entry with a **"Live location tracking"** page that admins include/exclude per mobile bundle (server-driven, hidden by default).
 3. Give that page a useful **idle state**: a persisted summary of the last session plus a **"Start again"** action, or a "nothing tracked" message when there is no history.
 4. Polish the **collapsed tracking bar**: a full-width bar with a pulsing "live" icon.
 
@@ -28,12 +28,26 @@ Phase 1c starts a session only from a dashboard mobile action. The "Start again"
 - **Display:** the resolved name (e.g. `My Tracker Device`). While loading or on failure (offline, or the entity was deleted) it falls back to `DEVICE · <first 8 chars of id>`.
 - The last successfully resolved name is also written into the persisted record (§3), so the idle page can show a name with no network call.
 
-## 2. Page promotion (replaces the spike)
+## 2. Page promotion — bundle-gated menu entry (replaces the spike)
 
-- **Delete** the phase-1a spike: `lib/modules/location_tracking/presentation/view/live_tracking_spike_page.dart`, the `liveTrackingSpike` route constant + `GoRoute`, and the `kDebugMode`-gated menu entry in `lib/modules/more/more_page.dart`.
-- Add a **permanent** (non-debug) "Live location tracking" entry on the More page, in the spot the spike entry occupied, opening the tracking page.
-- Rename the route constant `liveTrackingSession` → `liveTracking` (and its path) since the page now covers both the active-session and idle states. Update the bar's `context.push(...)` accordingly.
-- New l10n key for the menu title (English source in `lib/l10n/intl_en.arb`).
+The app's menu is server-driven: the mobile bundle sends a page layout the app maps through the `Pages` enum (`lib/utils/services/layouts/pages_layout.dart`) and renders via `ILayoutService.getMorePageItems(...)`. So exposure of the new page is a bundle page type, not a hardcoded entry — admins toggle it in **Mobile center → Bundles → Layout**, and it is **hidden by default**.
+
+**Backend (`thingsboard`):**
+- Add `LIVE_LOCATION_TRACKING` to `common/data/.../mobile/layout/DefaultPageId.java`.
+- Wire it through the default-page plumbing (`DefaultMobilePage` / `MobileLayoutConfig` defaults + any validation) so the bundle editor and stored layouts accept it. Not in the default visible set (opt-in).
+
+**ui-ngx (`thingsboard`):**
+- Mirror the new page id in the bundle-layout models/labels (`ui-ngx/src/app/shared/models/mobile-app.models.ts`) with a display label + icon, so the Layout editor (`pages/mobile/bundes/layout/`) lists it as a toggle.
+- Add an en_US locale string for the page name.
+
+**App (`flutter_thingsboard_app`):**
+- Add `live_location_tracking` to the `Pages` enum and parsing.
+- Map it in `layout_service.dart` (`getMorePageItems`) to the tracking page's route, icon, and default label; it renders only when the resolved bundle layout includes it.
+- **Delete** the phase-1a spike: `lib/modules/location_tracking/presentation/view/live_tracking_spike_page.dart`, the `liveTrackingSpike` route constant + `GoRoute`, and the `kDebugMode`-gated entry in `lib/modules/more/more_page.dart`.
+- Rename the route constant `liveTrackingSession` → `liveTracking` (and its path); the page now covers both active-session and idle states. Update the bar's `context.push(...)` accordingly.
+- New l10n key for the page title in `lib/l10n/intl_en.arb`.
+
+This bundle entry is also what makes the idle "last session" page reachable when no session is active (the tracking bar only exists during/after a session).
 
 ## 3. Idle state + persistence
 
@@ -91,6 +105,12 @@ LastTrackingRecord {
 
 ## Out of scope / follow-ups
 
-- Multi-entity tracking (separate spec).
+Tracked as their own future specs (not part of 1d):
+
+- **Multi-entity tracking** — save each GPS fix to more than one target entity; changes the wire protocol, tracking service, and ui-ngx action editor.
+- **Browser-side location save** — a new widget action available from the outer widget scope (like "Place map item") that reads the *browser's* geolocation and saves coordinates to an entity (current / user / alias / attribute-derived). Web-only (ui-ngx + existing telemetry-save APIs); does not touch the mobile app.
+
+Deliberately excluded from 1d itself:
+
 - History of more than one past session (only the single last record is kept).
 - Editing tracking parameters from the app (config is replayed verbatim).
