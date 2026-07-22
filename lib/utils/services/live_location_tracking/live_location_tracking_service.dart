@@ -111,6 +111,12 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     if (existing == null) {
       return;
     }
+    // Re-check after the read() await: stop()/logout may have finished (and
+    // cleared the store) while we were reading, and we must not resurrect a
+    // stopped session's record with a late write.
+    if (_session?.startedAt != startedAt) {
+      return;
+    }
     await _store.write(existing.copyWith(targetName: name));
   }
 
