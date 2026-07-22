@@ -481,11 +481,31 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingActive": MessageLookupByLibrary.simpleMessage(
       "Live location tracking",
     ),
+    "liveTrackingEndReason": MessageLookupByLibrary.simpleMessage("End reason"),
+    "liveTrackingEndReasonInterrupted": MessageLookupByLibrary.simpleMessage(
+      "Interrupted",
+    ),
+    "liveTrackingEndReasonManual": MessageLookupByLibrary.simpleMessage(
+      "Stopped manually",
+    ),
+    "liveTrackingEndReasonMaxDuration": MessageLookupByLibrary.simpleMessage(
+      "Reached max duration",
+    ),
+    "liveTrackingEnded": MessageLookupByLibrary.simpleMessage("Ended"),
     "liveTrackingErrors": MessageLookupByLibrary.simpleMessage("Errors"),
     "liveTrackingFixes": MessageLookupByLibrary.simpleMessage("Fixes"),
     "liveTrackingHide": MessageLookupByLibrary.simpleMessage("Hide"),
     "liveTrackingLastError": MessageLookupByLibrary.simpleMessage("Last error"),
     "liveTrackingLastFix": MessageLookupByLibrary.simpleMessage("Last fix"),
+    "liveTrackingLastSession": MessageLookupByLibrary.simpleMessage(
+      "Last session",
+    ),
+    "liveTrackingMenuTitle": MessageLookupByLibrary.simpleMessage(
+      "Live location tracking",
+    ),
+    "liveTrackingNoRecord": MessageLookupByLibrary.simpleMessage(
+      "No active tracking and no recent session.",
+    ),
     "liveTrackingNoSession": MessageLookupByLibrary.simpleMessage(
       "No active tracking session",
     ),
@@ -497,6 +517,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingSaved": MessageLookupByLibrary.simpleMessage("Saved"),
     "liveTrackingSessionTitle": MessageLookupByLibrary.simpleMessage(
       "Live location tracking",
+    ),
+    "liveTrackingStartAgain": MessageLookupByLibrary.simpleMessage(
+      "Start again",
     ),
     "liveTrackingStarted": MessageLookupByLibrary.simpleMessage("Started"),
     "liveTrackingStatus": MessageLookupByLibrary.simpleMessage("Status"),

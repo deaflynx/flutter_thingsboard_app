@@ -3448,6 +3448,91 @@ class S {
       args: [],
     );
   }
+
+  /// `Live location tracking`
+  String get liveTrackingMenuTitle {
+    return Intl.message(
+      'Live location tracking',
+      name: 'liveTrackingMenuTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No active tracking and no recent session.`
+  String get liveTrackingNoRecord {
+    return Intl.message(
+      'No active tracking and no recent session.',
+      name: 'liveTrackingNoRecord',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last session`
+  String get liveTrackingLastSession {
+    return Intl.message(
+      'Last session',
+      name: 'liveTrackingLastSession',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Start again`
+  String get liveTrackingStartAgain {
+    return Intl.message(
+      'Start again',
+      name: 'liveTrackingStartAgain',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Ended`
+  String get liveTrackingEnded {
+    return Intl.message('Ended', name: 'liveTrackingEnded', desc: '', args: []);
+  }
+
+  /// `End reason`
+  String get liveTrackingEndReason {
+    return Intl.message(
+      'End reason',
+      name: 'liveTrackingEndReason',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Stopped manually`
+  String get liveTrackingEndReasonManual {
+    return Intl.message(
+      'Stopped manually',
+      name: 'liveTrackingEndReasonManual',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Reached max duration`
+  String get liveTrackingEndReasonMaxDuration {
+    return Intl.message(
+      'Reached max duration',
+      name: 'liveTrackingEndReasonMaxDuration',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Interrupted`
+  String get liveTrackingEndReasonInterrupted {
+    return Intl.message(
+      'Interrupted',
+      name: 'liveTrackingEndReasonInterrupted',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -486,5 +486,14 @@
   "liveTrackingStatus": "Status",
   "liveTrackingStarted": "Started",
   "liveTrackingLastFix": "Last fix",
-  "liveTrackingLastError": "Last error"
+  "liveTrackingLastError": "Last error",
+  "liveTrackingMenuTitle": "Live location tracking",
+  "liveTrackingNoRecord": "No active tracking and no recent session.",
+  "liveTrackingLastSession": "Last session",
+  "liveTrackingStartAgain": "Start again",
+  "liveTrackingEnded": "Ended",
+  "liveTrackingEndReason": "End reason",
+  "liveTrackingEndReasonManual": "Stopped manually",
+  "liveTrackingEndReasonMaxDuration": "Reached max duration",
+  "liveTrackingEndReasonInterrupted": "Interrupted"
 }
