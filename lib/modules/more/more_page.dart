@@ -1,10 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'package:thingsboard_app/config/routes/v2/routes_config/routes/location_tracking_routes.dart';
 import 'package:thingsboard_app/config/themes/app_colors.dart';
 import 'package:thingsboard_app/core/auth/login/provider/login_provider.dart';
 import 'package:thingsboard_app/core/usecases/user_details_usecase.dart';
@@ -82,18 +80,6 @@ class MorePage extends HookConsumerWidget {
                     ),
                   ),
                 ],
-                // Debug-only entry to the phase 1a GPS tracking spike page.
-                if (kDebugMode)
-                  MoreMenuItemWidget(
-                    const TbMainNavigationItem(
-                      title: 'GPS tracking spike',
-                      icon: Icons.gps_fixed,
-                      path: LocationTrackingRoutes.liveTrackingSpike,
-                    ),
-                    onTap: () {
-                      context.push(LocationTrackingRoutes.liveTrackingSpike);
-                    },
-                  ),
                 Divider(
                   color: Colors.black.withValues(alpha: .05),
                   thickness: 1,

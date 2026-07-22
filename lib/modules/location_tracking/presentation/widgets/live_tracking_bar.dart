@@ -40,7 +40,7 @@ class LiveTrackingBar extends ConsumerWidget {
     return Material(
       color: colors.primaryContainer,
       child: InkWell(
-        onTap: () => context.push(LocationTrackingRoutes.liveTrackingSession),
+        onTap: () => context.push(LocationTrackingRoutes.liveTracking),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
