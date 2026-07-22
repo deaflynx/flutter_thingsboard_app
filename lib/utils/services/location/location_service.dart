@@ -131,5 +131,8 @@ class LocationService implements ILocationService {
     longitude: p.longitude,
     accuracy: p.accuracy,
     timestamp: p.timestamp,
+    altitude: p.altitude,
+    speed: p.speed,
+    heading: p.heading,
   );
 }
