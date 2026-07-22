@@ -478,6 +478,30 @@ class MessageLookup extends MessageLookupByLibrary {
     "listIsEmptyText": MessageLookupByLibrary.simpleMessage(
       "The list is currently empty.",
     ),
+    "liveTrackingActive": MessageLookupByLibrary.simpleMessage(
+      "Live location tracking",
+    ),
+    "liveTrackingErrors": MessageLookupByLibrary.simpleMessage("Errors"),
+    "liveTrackingFixes": MessageLookupByLibrary.simpleMessage("Fixes"),
+    "liveTrackingHide": MessageLookupByLibrary.simpleMessage("Hide"),
+    "liveTrackingLastError": MessageLookupByLibrary.simpleMessage("Last error"),
+    "liveTrackingLastFix": MessageLookupByLibrary.simpleMessage("Last fix"),
+    "liveTrackingNoSession": MessageLookupByLibrary.simpleMessage(
+      "No active tracking session",
+    ),
+    "liveTrackingPause": MessageLookupByLibrary.simpleMessage("Pause"),
+    "liveTrackingPaused": MessageLookupByLibrary.simpleMessage(
+      "Live tracking paused",
+    ),
+    "liveTrackingResume": MessageLookupByLibrary.simpleMessage("Resume"),
+    "liveTrackingSaved": MessageLookupByLibrary.simpleMessage("Saved"),
+    "liveTrackingSessionTitle": MessageLookupByLibrary.simpleMessage(
+      "Live location tracking",
+    ),
+    "liveTrackingStarted": MessageLookupByLibrary.simpleMessage("Started"),
+    "liveTrackingStatus": MessageLookupByLibrary.simpleMessage("Status"),
+    "liveTrackingStop": MessageLookupByLibrary.simpleMessage("Stop"),
+    "liveTrackingTarget": MessageLookupByLibrary.simpleMessage("Target entity"),
     "login": MessageLookupByLibrary.simpleMessage("Log In"),
     "loginToApp": MessageLookupByLibrary.simpleMessage("Login to app"),
     "loginToYourAccount": MessageLookupByLibrary.simpleMessage(

@@ -470,5 +470,21 @@
         "type": "int"
       }
     }
-  }
+  },
+  "liveTrackingActive": "Live location tracking",
+  "liveTrackingPaused": "Live tracking paused",
+  "liveTrackingFixes": "Fixes",
+  "liveTrackingSaved": "Saved",
+  "liveTrackingErrors": "Errors",
+  "liveTrackingStop": "Stop",
+  "liveTrackingPause": "Pause",
+  "liveTrackingResume": "Resume",
+  "liveTrackingHide": "Hide",
+  "liveTrackingSessionTitle": "Live location tracking",
+  "liveTrackingNoSession": "No active tracking session",
+  "liveTrackingTarget": "Target entity",
+  "liveTrackingStatus": "Status",
+  "liveTrackingStarted": "Started",
+  "liveTrackingLastFix": "Last fix",
+  "liveTrackingLastError": "Last error"
 }

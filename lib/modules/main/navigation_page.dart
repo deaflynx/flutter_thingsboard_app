@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:thingsboard_app/constants/app_constants.dart';
 import 'package:thingsboard_app/locator.dart';
+import 'package:thingsboard_app/modules/location_tracking/presentation/widgets/live_tracking_bar.dart';
 import 'package:thingsboard_app/modules/main/model/main_navigation_item.dart';
 import 'package:thingsboard_app/modules/main/model/navigation_type.dart';
 import 'package:thingsboard_app/modules/main/providers/navigation_helper.dart';
@@ -61,7 +62,9 @@ class NavigationPage extends HookConsumerWidget {
       canPop: false,
       child: SafeArea(
         child: Scaffold(
-          body: child,
+          body: Column(
+            children: [const LiveTrackingBar(), Expanded(child: child)],
+          ),
           bottomNavigationBar:
               currentIndex.value == null
                   ? null

@@ -1,0 +1,108 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:thingsboard_app/config/routes/v2/routes_config/routes/location_tracking_routes.dart';
+import 'package:thingsboard_app/generated/l10n.dart';
+import 'package:thingsboard_app/modules/location_tracking/presentation/provider/live_tracking_provider.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
+
+/// Persistent bar shown on all main pages while a tracking session exists.
+class LiveTrackingBar extends ConsumerWidget {
+  const LiveTrackingBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewState = ref.watch(liveTrackingProvider);
+    final session = viewState.session;
+    if (session == null) {
+      return const SizedBox.shrink();
+    }
+    final colors = Theme.of(context).colorScheme;
+    final tracking = session.status == LiveTrackingStatus.tracking;
+
+    if (viewState.hidden) {
+      return Material(
+        color: colors.primaryContainer,
+        child: InkWell(
+          onTap: () => ref.read(liveTrackingProvider.notifier).show(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Icon(
+              tracking ? Icons.gps_fixed : Icons.gps_off,
+              size: 16,
+              color: colors.onPrimaryContainer,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: colors.primaryContainer,
+      child: InkWell(
+        onTap: () => context.push(LocationTrackingRoutes.liveTrackingSession),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                tracking ? Icons.gps_fixed : Icons.gps_off,
+                color: colors.onPrimaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tracking
+                          ? S.of(context).liveTrackingActive
+                          : S.of(context).liveTrackingPaused,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: colors.onPrimaryContainer,
+                      ),
+                    ),
+                    Text(
+                      '${S.of(context).liveTrackingFixes}: '
+                      '${session.fixCount} · '
+                      '${S.of(context).liveTrackingSaved}: '
+                      '${session.savedCount}'
+                      '${session.saveErrorCount > 0 ? ' · ${S.of(context).liveTrackingErrors}: ${session.saveErrorCount}' : ''}',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colors.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip:
+                    tracking
+                        ? S.of(context).liveTrackingPause
+                        : S.of(context).liveTrackingResume,
+                icon: Icon(
+                  tracking ? Icons.pause : Icons.play_arrow,
+                  color: colors.onPrimaryContainer,
+                ),
+                onPressed: () {
+                  final notifier = ref.read(liveTrackingProvider.notifier);
+                  tracking ? notifier.pause() : notifier.resume();
+                },
+              ),
+              IconButton(
+                tooltip: S.of(context).liveTrackingStop,
+                icon: Icon(Icons.stop, color: colors.onPrimaryContainer),
+                onPressed: () => ref.read(liveTrackingProvider.notifier).stop(),
+              ),
+              IconButton(
+                tooltip: S.of(context).liveTrackingHide,
+                icon: Icon(Icons.expand_less, color: colors.onPrimaryContainer),
+                onPressed: () => ref.read(liveTrackingProvider.notifier).hide(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

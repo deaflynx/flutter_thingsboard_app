@@ -3313,6 +3313,141 @@ class S {
       args: [count],
     );
   }
+
+  /// `Live location tracking`
+  String get liveTrackingActive {
+    return Intl.message(
+      'Live location tracking',
+      name: 'liveTrackingActive',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Live tracking paused`
+  String get liveTrackingPaused {
+    return Intl.message(
+      'Live tracking paused',
+      name: 'liveTrackingPaused',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Fixes`
+  String get liveTrackingFixes {
+    return Intl.message('Fixes', name: 'liveTrackingFixes', desc: '', args: []);
+  }
+
+  /// `Saved`
+  String get liveTrackingSaved {
+    return Intl.message('Saved', name: 'liveTrackingSaved', desc: '', args: []);
+  }
+
+  /// `Errors`
+  String get liveTrackingErrors {
+    return Intl.message(
+      'Errors',
+      name: 'liveTrackingErrors',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Stop`
+  String get liveTrackingStop {
+    return Intl.message('Stop', name: 'liveTrackingStop', desc: '', args: []);
+  }
+
+  /// `Pause`
+  String get liveTrackingPause {
+    return Intl.message('Pause', name: 'liveTrackingPause', desc: '', args: []);
+  }
+
+  /// `Resume`
+  String get liveTrackingResume {
+    return Intl.message(
+      'Resume',
+      name: 'liveTrackingResume',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Hide`
+  String get liveTrackingHide {
+    return Intl.message('Hide', name: 'liveTrackingHide', desc: '', args: []);
+  }
+
+  /// `Live location tracking`
+  String get liveTrackingSessionTitle {
+    return Intl.message(
+      'Live location tracking',
+      name: 'liveTrackingSessionTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No active tracking session`
+  String get liveTrackingNoSession {
+    return Intl.message(
+      'No active tracking session',
+      name: 'liveTrackingNoSession',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Target entity`
+  String get liveTrackingTarget {
+    return Intl.message(
+      'Target entity',
+      name: 'liveTrackingTarget',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Status`
+  String get liveTrackingStatus {
+    return Intl.message(
+      'Status',
+      name: 'liveTrackingStatus',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Started`
+  String get liveTrackingStarted {
+    return Intl.message(
+      'Started',
+      name: 'liveTrackingStarted',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last fix`
+  String get liveTrackingLastFix {
+    return Intl.message(
+      'Last fix',
+      name: 'liveTrackingLastFix',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Last error`
+  String get liveTrackingLastError {
+    return Intl.message(
+      'Last error',
+      name: 'liveTrackingLastError',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {
