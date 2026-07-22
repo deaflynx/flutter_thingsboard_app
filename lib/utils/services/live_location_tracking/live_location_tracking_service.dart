@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_location_tracking_service.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_remote.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/location/i_location_service.dart';
@@ -15,6 +18,8 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     required ILocationService locationService,
     required ILiveTrackingRemote remote,
     required TbLogger logger,
+    required ILiveTrackingStore store,
+    required IEntityNameResolver nameResolver,
     // Android notification strings are OS-level, set once at construction;
     // English defaults are acceptable for v1 (the locator can later pass
     // localized strings without touching this class).
@@ -24,11 +29,15 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     ),
   }) : _locationService = locationService,
        _remote = remote,
-       _log = logger;
+       _log = logger,
+       _store = store,
+       _nameResolver = nameResolver;
 
   final ILocationService _locationService;
   final ILiveTrackingRemote _remote;
   final TbLogger _log;
+  final ILiveTrackingStore _store;
+  final IEntityNameResolver _nameResolver;
   final BackgroundTrackingConfig backgroundConfig;
 
   final _sessionController = StreamController<LiveTrackingSession?>.broadcast();
@@ -45,11 +54,24 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
   @override
   Future<void> start(LiveTrackingConfig config) async {
     await stop();
+    final startedAt = DateTime.now();
     _setSession(
       LiveTrackingSession(
         config: config,
         status: LiveTrackingStatus.tracking,
-        startedAt: DateTime.now(),
+        startedAt: startedAt,
+      ),
+    );
+    final name = await _nameResolver.resolveName(
+      config.target.entityType,
+      config.target.id,
+    );
+    await _store.write(
+      LastTrackingRecord(
+        configJson: config.toJson(),
+        targetName: name,
+        startedAt: startedAt,
+        endReason: TrackingEndReason.interrupted,
       ),
     );
     await _writeStatusAttributes({
@@ -59,19 +81,48 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _subscribe(config);
     final maxDuration = config.maxDurationMinutes;
     if (maxDuration != null) {
-      _maxDurationTimer = Timer(Duration(minutes: maxDuration), stop);
+      _maxDurationTimer = Timer(
+        Duration(minutes: maxDuration),
+        () => _finish(TrackingEndReason.maxDuration),
+      );
     }
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> stop() => _finish(TrackingEndReason.manual);
+
+  Future<void> _finish(TrackingEndReason reason) async {
     _maxDurationTimer?.cancel();
     _maxDurationTimer = null;
     _cancelSubscription();
-    if (_session != null) {
+    final current = _session;
+    if (current != null) {
       await _writeStatusAttributes({'gpsActive': false});
+      await _updateRecordOnEnd(current, reason);
       _setSession(null);
     }
+  }
+
+  Future<void> _updateRecordOnEnd(
+    LiveTrackingSession session,
+    TrackingEndReason reason,
+  ) async {
+    final existing = await _store.read();
+    if (existing == null) {
+      return;
+    }
+    await _store.write(
+      existing.copyWith(
+        endedAt: DateTime.now(),
+        fixCount: session.fixCount,
+        savedCount: session.savedCount,
+        saveErrorCount: session.saveErrorCount,
+        lastLat: session.lastFix?.latitude,
+        lastLng: session.lastFix?.longitude,
+        lastError: session.lastError,
+        endReason: reason,
+      ),
+    );
   }
 
   @override

@@ -74,18 +74,20 @@ Future<void> setUpRootDependencies() async {
     ..registerLazySingleton<ILiveTrackingRemote>(
       () => LiveTrackingRemote(clientService: getIt()),
     )
-    ..registerLazySingleton<ILiveLocationTrackingService>(
-      () => LiveLocationTrackingService(
-        locationService: getIt(),
-        remote: getIt(),
-        logger: getIt(),
-      ),
-    )
     ..registerLazySingleton<ILiveTrackingStore>(
       () => LiveTrackingStore(storage: getIt(), logger: getIt()),
     )
     ..registerLazySingleton<IEntityNameResolver>(
       () => EntityNameResolver(clientService: getIt(), logger: getIt()),
+    )
+    ..registerLazySingleton<ILiveLocationTrackingService>(
+      () => LiveLocationTrackingService(
+        locationService: getIt(),
+        remote: getIt(),
+        logger: getIt(),
+        store: getIt(),
+        nameResolver: getIt(),
+      ),
     )
     // ..registerLazySingleton(() => TbContext())
     ..registerSingletonAsync<ITbClientService>(() async {

@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_remote.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_location_tracking_service.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/location/i_location_service.dart';
@@ -35,6 +38,30 @@ class FakeLocationService implements ILocationService {
 
   @override
   Future<bool> openLocationSettings() async => true;
+}
+
+class FakeStore implements ILiveTrackingStore {
+  LastTrackingRecord? record;
+  int writeCount = 0;
+
+  @override
+  Future<LastTrackingRecord?> read() async => record;
+
+  @override
+  Future<void> write(LastTrackingRecord r) async {
+    record = r;
+    writeCount++;
+  }
+
+  @override
+  Future<void> clear() async => record = null;
+}
+
+class FakeNameResolver implements IEntityNameResolver {
+  String? name = 'My Tracker';
+
+  @override
+  Future<String?> resolveName(String entityType, String id) async => name;
 }
 
 class FakeRemote implements ILiveTrackingRemote {
@@ -77,15 +104,21 @@ void main() {
 
   late FakeLocationService location;
   late FakeRemote remote;
+  late FakeStore store;
+  late FakeNameResolver nameResolver;
   late LiveLocationTrackingService service;
 
   setUp(() {
     location = FakeLocationService();
     remote = FakeRemote();
+    store = FakeStore();
+    nameResolver = FakeNameResolver();
     service = LiveLocationTrackingService(
       locationService: location,
       remote: remote,
       logger: TbLogger(),
+      store: store,
+      nameResolver: nameResolver,
     );
   });
 
@@ -247,6 +280,40 @@ void main() {
       async.elapse(const Duration(minutes: 5, seconds: 1));
       async.flushMicrotasks();
       expect(service.session, isNull);
+    });
+  });
+
+  test('start writes an interrupted record with the resolved name', () async {
+    await service.start(const LiveTrackingConfig(target: target));
+    expect(store.record, isNotNull);
+    expect(store.record!.targetName, 'My Tracker');
+    expect(store.record!.endReason, TrackingEndReason.interrupted);
+    expect(store.record!.endedAt, isNull);
+  });
+
+  test('stop updates the record with manual end reason and counts', () async {
+    await service.start(const LiveTrackingConfig(target: target));
+    location.controller!.add(LocationSuccess(fix));
+    await pumpEventQueue();
+
+    await service.stop();
+    expect(store.record!.endReason, TrackingEndReason.manual);
+    expect(store.record!.endedAt, isNotNull);
+    expect(store.record!.fixCount, 1);
+    expect(store.record!.savedCount, 1);
+    expect(store.record!.lastLat, 1.0);
+    expect(store.record!.lastLng, 2.0);
+  });
+
+  test('max-duration end writes maxDuration reason', () {
+    fakeAsync((async) {
+      service.start(
+        const LiveTrackingConfig(target: target, maxDurationMinutes: 5),
+      );
+      async.flushMicrotasks();
+      async.elapse(const Duration(minutes: 5, seconds: 1));
+      async.flushMicrotasks();
+      expect(store.record!.endReason, TrackingEndReason.maxDuration);
     });
   });
 }
