@@ -107,7 +107,9 @@ void main() {
               )
               .first;
       final material = tester.widget<Material>(collapsedMaterialFinder);
-      expect(material.color, isNotNull);
+      final colors =
+          Theme.of(tester.element(collapsedMaterialFinder)).colorScheme;
+      expect(material.color, colors.primaryContainer);
       final size = tester.getSize(collapsedMaterialFinder);
       expect(
         size.width,

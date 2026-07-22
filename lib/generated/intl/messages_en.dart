@@ -506,9 +506,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingNoRecord": MessageLookupByLibrary.simpleMessage(
       "No active tracking and no recent session.",
     ),
-    "liveTrackingNoSession": MessageLookupByLibrary.simpleMessage(
-      "No active tracking session",
-    ),
     "liveTrackingPause": MessageLookupByLibrary.simpleMessage("Pause"),
     "liveTrackingPaused": MessageLookupByLibrary.simpleMessage(
       "Live tracking paused",

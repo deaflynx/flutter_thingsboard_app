@@ -481,7 +481,6 @@
   "liveTrackingResume": "Resume",
   "liveTrackingHide": "Hide",
   "liveTrackingSessionTitle": "Live location tracking",
-  "liveTrackingNoSession": "No active tracking session",
   "liveTrackingTarget": "Target entity",
   "liveTrackingStatus": "Status",
   "liveTrackingStarted": "Started",

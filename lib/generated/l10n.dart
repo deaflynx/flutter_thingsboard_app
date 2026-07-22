@@ -3389,16 +3389,6 @@ class S {
     );
   }
 
-  /// `No active tracking session`
-  String get liveTrackingNoSession {
-    return Intl.message(
-      'No active tracking session',
-      name: 'liveTrackingNoSession',
-      desc: '',
-      args: [],
-    );
-  }
-
   /// `Target entity`
   String get liveTrackingTarget {
     return Intl.message(

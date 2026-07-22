@@ -60,8 +60,19 @@ class FakeStore implements ILiveTrackingStore {
 class FakeNameResolver implements IEntityNameResolver {
   String? name = 'My Tracker';
 
+  /// When set, [resolveName] returns this completer's future instead of
+  /// resolving immediately, letting tests control exactly when the
+  /// (network) name lookup completes relative to other service calls.
+  Completer<String?>? pendingCompleter;
+
   @override
-  Future<String?> resolveName(String entityType, String id) async => name;
+  Future<String?> resolveName(String entityType, String id) {
+    final pending = pendingCompleter;
+    if (pending != null) {
+      return pending.future;
+    }
+    return Future.value(name);
+  }
 }
 
 class FakeRemote implements ILiveTrackingRemote {
@@ -285,10 +296,56 @@ void main() {
 
   test('start writes an interrupted record with the resolved name', () async {
     await service.start(const LiveTrackingConfig(target: target));
+    // Name resolution now happens off the critical path (see finding #1);
+    // let its fire-and-forget patch land before asserting on it.
+    await pumpEventQueue();
     expect(store.record, isNotNull);
     expect(store.record!.targetName, 'My Tracker');
     expect(store.record!.endReason, TrackingEndReason.interrupted);
     expect(store.record!.endedAt, isNull);
+  });
+
+  test('a name resolution that completes after stop() does not resurrect the '
+      'stopped session, its subscription, or its persisted record', () async {
+    final resolverCompleter = Completer<String?>();
+    nameResolver.pendingCompleter = resolverCompleter;
+
+    unawaited(service.start(const LiveTrackingConfig(target: target)));
+    await pumpEventQueue();
+
+    // The interrupted record and GPS subscription must already exist
+    // before the name ever resolves: resolveName must not gate them.
+    expect(store.record, isNotNull);
+    expect(store.record!.endReason, TrackingEndReason.interrupted);
+    expect(store.record!.targetName, isNull);
+    expect(location.controller?.hasListener, true);
+
+    await service.stop();
+    await pumpEventQueue();
+
+    expect(service.session, isNull);
+    expect(store.record!.endReason, TrackingEndReason.manual);
+    expect(location.controller?.hasListener, false);
+
+    resolverCompleter.complete('Late Name');
+    await pumpEventQueue();
+
+    expect(
+      service.session,
+      isNull,
+      reason: 'a late name resolution must not resurrect the session',
+    );
+    expect(
+      store.record!.endReason,
+      TrackingEndReason.manual,
+      reason: 'a late name resolution must not overwrite the ended record',
+    );
+    expect(store.record!.targetName, isNot('Late Name'));
+    expect(
+      location.controller?.hasListener,
+      false,
+      reason: 'a late name resolution must not resurrect the subscription',
+    );
   });
 
   test('stop updates the record with manual end reason and counts', () async {

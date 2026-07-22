@@ -62,14 +62,13 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
         startedAt: startedAt,
       ),
     );
-    final name = await _nameResolver.resolveName(
-      config.target.entityType,
-      config.target.id,
-    );
+    // Persist the recoverable "interrupted" record and subscribe to GPS
+    // before doing anything network-bound: a force-kill or a race with
+    // stop()/logout must never leave this critical path gated on the
+    // (possibly slow or offline) entity-name lookup below.
     await _store.write(
       LastTrackingRecord(
         configJson: config.toJson(),
-        targetName: name,
         startedAt: startedAt,
         endReason: TrackingEndReason.interrupted,
       ),
@@ -86,6 +85,33 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
         () => _finish(TrackingEndReason.maxDuration),
       );
     }
+    unawaited(_resolveAndPatchTargetName(config, startedAt));
+  }
+
+  /// Resolves the human-readable target name off the critical path and
+  /// patches it into the persisted record once known. Guarded against the
+  /// session having been stopped/replaced while the (network) lookup was in
+  /// flight, so a late resolution can never resurrect a stopped session's
+  /// record or re-subscribe GPS after stop()/logout.
+  Future<void> _resolveAndPatchTargetName(
+    LiveTrackingConfig config,
+    DateTime startedAt,
+  ) async {
+    final name = await _nameResolver.resolveName(
+      config.target.entityType,
+      config.target.id,
+    );
+    if (name == null) {
+      return;
+    }
+    if (_session?.startedAt != startedAt) {
+      return;
+    }
+    final existing = await _store.read();
+    if (existing == null) {
+      return;
+    }
+    await _store.write(existing.copyWith(targetName: name));
   }
 
   @override

@@ -97,6 +97,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Start again'), findsOneWidget);
-    expect(find.text('My Tracker'), findsWidgets);
+    expect(find.text('My Tracker'), findsOneWidget);
   });
 }
