@@ -80,4 +80,39 @@ void main() {
     await tester.tap(find.byIcon(Icons.stop));
     expect(tracking.stopCalled, true);
   });
+
+  testWidgets(
+    'collapsed bar spans full width and shows gps_fixed when tracking',
+    (tester) async {
+      tracking.session = LiveTrackingSession(
+        config: const LiveTrackingConfig(
+          target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+        ),
+        status: LiveTrackingStatus.tracking,
+        startedAt: DateTime.fromMillisecondsSinceEpoch(0),
+      );
+
+      await tester.pumpWidget(_wrap(const LiveTrackingBar()));
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.expand_less));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.gps_fixed), findsOneWidget);
+      final collapsedMaterialFinder =
+          find
+              .ancestor(
+                of: find.byIcon(Icons.gps_fixed),
+                matching: find.byType(Material),
+              )
+              .first;
+      final material = tester.widget<Material>(collapsedMaterialFinder);
+      expect(material.color, isNotNull);
+      final size = tester.getSize(collapsedMaterialFinder);
+      expect(
+        size.width,
+        tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      );
+    },
+  );
 }

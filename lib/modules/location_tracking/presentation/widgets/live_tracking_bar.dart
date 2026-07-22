@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:thingsboard_app/config/routes/v2/routes_config/routes/location_tracking_routes.dart';
@@ -21,20 +22,7 @@ class LiveTrackingBar extends ConsumerWidget {
     final tracking = session.status == LiveTrackingStatus.tracking;
 
     if (viewState.hidden) {
-      return Material(
-        color: colors.primaryContainer,
-        child: InkWell(
-          onTap: () => ref.read(liveTrackingProvider.notifier).show(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Icon(
-              tracking ? Icons.gps_fixed : Icons.gps_off,
-              size: 16,
-              color: colors.onPrimaryContainer,
-            ),
-          ),
-        ),
-      );
+      return _CollapsedBar(tracking: tracking);
     }
 
     return Material(
@@ -100,6 +88,52 @@ class LiveTrackingBar extends ConsumerWidget {
                 onPressed: () => ref.read(liveTrackingProvider.notifier).hide(),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CollapsedBar extends HookConsumerWidget {
+  const _CollapsedBar({required this.tracking});
+
+  final bool tracking;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final controller = useAnimationController(
+      duration: const Duration(milliseconds: 900),
+    );
+    useEffect(() {
+      if (tracking) {
+        controller.repeat(reverse: true);
+      } else {
+        controller.stop();
+        controller.value = 1;
+      }
+      return null;
+    }, [tracking]);
+
+    return Material(
+      color: colors.primaryContainer,
+      child: InkWell(
+        onTap: () => ref.read(liveTrackingProvider.notifier).show(),
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Center(
+              child: FadeTransition(
+                opacity: Tween<double>(begin: 0.35, end: 1).animate(controller),
+                child: Icon(
+                  tracking ? Icons.gps_fixed : Icons.gps_off,
+                  size: 18,
+                  color: colors.onPrimaryContainer,
+                ),
+              ),
+            ),
           ),
         ),
       ),
