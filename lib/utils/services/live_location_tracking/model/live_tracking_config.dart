@@ -16,6 +16,8 @@ class LiveTrackingTarget {
 
   final String entityType;
   final String id;
+
+  Map<String, dynamic> toJson() => {'entityType': entityType, 'id': id};
 }
 
 /// Fully-resolved live tracking session config received from the dashboard
@@ -75,5 +77,26 @@ class LiveTrackingConfig {
         'HIGH' => LocationAccuracyLevel.high,
         'LOW' => LocationAccuracyLevel.low,
         _ => LocationAccuracyLevel.balanced,
+      };
+
+  Map<String, dynamic> toJson() => {
+    'target': target.toJson(),
+    'latitudeKey': latitudeKey,
+    'longitudeKey': longitudeKey,
+    'includeMetadata': includeMetadata,
+    'mirrorToAttributes': mirrorToAttributes,
+    'accuracy': _accuracyToString(accuracy),
+    'distanceFilterMeters': distanceFilterMeters,
+    'intervalSeconds': intervalSeconds,
+    'maxDurationMinutes': maxDurationMinutes,
+    'writeStatusAttributes': writeStatusAttributes,
+    'trackedBy': trackedBy,
+  };
+
+  static String _accuracyToString(LocationAccuracyLevel level) =>
+      switch (level) {
+        LocationAccuracyLevel.high => 'HIGH',
+        LocationAccuracyLevel.low => 'LOW',
+        LocationAccuracyLevel.balanced => 'BALANCED',
       };
 }

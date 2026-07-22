@@ -73,4 +73,35 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test('toJson round-trips through fromJson', () {
+    const original = LiveTrackingConfig(
+      target: LiveTrackingTarget(entityType: 'DEVICE', id: 'abc-123'),
+      latitudeKey: 'lat',
+      longitudeKey: 'lng',
+      includeMetadata: true,
+      mirrorToAttributes: true,
+      accuracy: LocationAccuracyLevel.high,
+      distanceFilterMeters: 25,
+      intervalSeconds: 60,
+      maxDurationMinutes: 120,
+      writeStatusAttributes: false,
+      trackedBy: 'user@example.com',
+    );
+
+    final restored = LiveTrackingConfig.fromJson(original.toJson());
+
+    expect(restored.target.entityType, 'DEVICE');
+    expect(restored.target.id, 'abc-123');
+    expect(restored.latitudeKey, 'lat');
+    expect(restored.longitudeKey, 'lng');
+    expect(restored.includeMetadata, true);
+    expect(restored.mirrorToAttributes, true);
+    expect(restored.accuracy, LocationAccuracyLevel.high);
+    expect(restored.distanceFilterMeters, 25);
+    expect(restored.intervalSeconds, 60);
+    expect(restored.maxDurationMinutes, 120);
+    expect(restored.writeStatusAttributes, false);
+    expect(restored.trackedBy, 'user@example.com');
+  });
 }
