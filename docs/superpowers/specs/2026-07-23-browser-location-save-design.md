@@ -49,7 +49,7 @@ Coordinates and metrics are written through configurable **data keys**, mirrorin
 | latitude | `latitude` | `coords.latitude` (degrees) |
 | longitude | `longitude` | `coords.longitude` (degrees) |
 
-**Optional keys** (v1 — each individually enable-able in the editor; browser-meaningful `GeolocationCoordinates` / `GeolocationPosition` fields):
+**Optional keys** (v1 — each has a key-name input in the editor; leaving a name blank means "don't save that field"; browser-meaningful `GeolocationCoordinates` / `GeolocationPosition` fields):
 
 | Field | Default key name | Source | Typical availability |
 |---|---|---|---|
@@ -60,11 +60,11 @@ Coordinates and metrics are written through configurable **data keys**, mirrorin
 | speed | `speed` | `coords.speed` (m/s) | null when stationary or desktop |
 | timestamp | `locationTimestamp` | `position.timestamp` (epoch ms) | always present |
 
-**Per-key type/scope:** each configured key has a type — **attribute** (`SERVER_SCOPE` default, or `SHARED_SCOPE`) or **timeseries** (`LATEST_TELEMETRY`). Default for every key is `SERVER_SCOPE` attribute.
+**Save-as (reused, single setting for all keys):** one `saveAs` selector — **Attributes (server scope)** or **Time series** — applied to every saved key, reusing the existing `MobileActionSaveAs` enum and its translations (the same control the mobile "Save location to entity" action uses). Attributes are written to `SERVER_SCOPE`; time series to `LATEST_TELEMETRY`. Per-key type/scope is intentionally **not** offered (YAGNI; matches the existing mobile action).
 
-**Null-handling (important):** `AttributeService.saveEntityAttributes` treats a `null` value as a **delete** of that key (`attribute.service.ts:71-96`). Therefore optional metrics whose captured value is `null`/`undefined`/`NaN` (e.g. `altitude`/`heading`/`speed` on a desktop) MUST be **omitted from the save payload entirely**, never sent as null — otherwise a stale attribute would be silently deleted. Required latitude/longitude are always numeric and always saved.
+**Null-handling (important):** `AttributeService.saveEntityAttributes` treats a `null` value as a **delete** of that key (`attribute.service.ts:71-96`). Therefore an optional metric whose captured value is `null`/`undefined`/`NaN` (e.g. `altitude`/`heading`/`speed` on a desktop), or whose key name is blank, MUST be **omitted from the save payload entirely**, never sent as null — otherwise a stale attribute/series would be silently deleted. Required latitude/longitude are always numeric and always saved.
 
-**Save mechanism:** batch the enabled keys by resolved type into two payloads and call:
+**Save mechanism:** collect the enabled, non-null fields into one payload and call, per `saveAs`:
 - `AttributeService.saveEntityAttributes(entityId, scope, AttributeData[])` (`attribute.service.ts:71`) for attribute keys, and
 - `AttributeService.saveEntityTimeseries(entityId, LatestTelemetry.LATEST_TELEMETRY, AttributeData[])` (`:98`) for timeseries keys.
 
