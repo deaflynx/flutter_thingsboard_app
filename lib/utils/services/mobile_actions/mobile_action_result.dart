@@ -7,8 +7,11 @@ import 'package:thingsboard_app/utils/services/mobile_actions/results/qr_code_re
 abstract class MobileActionResult {
   MobileActionResult();
 
-  factory MobileActionResult.launched(bool launched) {
-    return LaunchResult(launched);
+  factory MobileActionResult.launched(
+    bool launched, {
+    Map<String, dynamic>? trackingInfo,
+  }) {
+    return LaunchResult(launched, trackingInfo: trackingInfo);
   }
 
   factory MobileActionResult.image(String imageUrl) {

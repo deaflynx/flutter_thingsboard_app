@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:thingsboard_app/config/routes/v2/routes_config/routes/asset_routes.dart';
+import 'package:thingsboard_app/config/routes/v2/routes_config/routes/customer_routes.dart';
+import 'package:thingsboard_app/config/routes/v2/routes_config/routes/dashboard_routes.dart';
+import 'package:thingsboard_app/config/themes/app_colors.dart';
+import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/generated/l10n.dart';
 import 'package:thingsboard_app/locator.dart';
+import 'package:thingsboard_app/modules/dashboard/domain/entites/dashboard_arguments.dart';
 import 'package:thingsboard_app/modules/location_tracking/presentation/provider/live_tracking_provider.dart';
+import 'package:thingsboard_app/utils/services/device_profile/device_profile_cache.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_tracking_display.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
+import 'package:thingsboard_app/utils/services/overlay_service/i_overlay_service.dart';
 import 'package:thingsboard_app/utils/services/tb_client_service/i_tb_client_service.dart';
+import 'package:thingsboard_app/utils/utils.dart';
 
 class LiveTrackingPage extends ConsumerWidget {
   const LiveTrackingPage({super.key});
@@ -20,6 +31,127 @@ class LiveTrackingPage extends ConsumerWidget {
       body: session != null ? _ActiveSession(session: session) : _IdleView(),
     );
   }
+}
+
+final _sessionTimeFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+
+String _formatSessionTime(DateTime time) =>
+    _sessionTimeFormat.format(time.toLocal());
+
+TextStyle _linkStyle(BuildContext context) {
+  final color = Theme.of(context).colorScheme.primary;
+  return TextStyle(
+    color: color,
+    decoration: TextDecoration.underline,
+    decorationColor: color,
+  );
+}
+
+bool _targetHasDetailsPage(String entityType) => switch (entityType) {
+  'DEVICE' || 'ASSET' || 'CUSTOMER' => true,
+  _ => false,
+};
+
+Future<void> _openTargetEntity(
+  BuildContext context,
+  LiveTrackingTarget target,
+) async {
+  switch (target.entityType) {
+    case 'ASSET':
+      context.push('${AssetRoutes.asset}/${target.id}');
+    case 'CUSTOMER':
+      context.push(
+        '${CustomerRoutes.customers}${CustomerRoutes.customer}/${target.id}',
+      );
+    case 'DEVICE':
+      await _openDeviceTarget(context, target.id);
+  }
+}
+
+/// Mirrors the devices-list tap behavior: opens the dashboard configured in
+/// the device profile, or warns a tenant admin that none is configured.
+Future<void> _openDeviceTarget(BuildContext context, String deviceId) async {
+  final tbClient = getIt<ITbClientService>().client;
+  try {
+    final device =
+        (await tbClient.getDeviceControllerApi().getDeviceById(
+          deviceId: deviceId,
+        )).data;
+    if (device == null) {
+      return;
+    }
+    final profile = await DeviceProfileCache.getDeviceProfileInfo(
+      tbClient,
+      device.type ?? '',
+      deviceId,
+    );
+    final dashboardId = profile.info.defaultDashboardId?.id;
+    if (dashboardId == null) {
+      if (tbClient.isTenantAdmin()) {
+        getIt<IOverlayService>().showWarnNotification(
+          (context) =>
+              S.of(context).mobileDashboardShouldBeConfiguredInDeviceProfile,
+        );
+      }
+      return;
+    }
+    final state = Utils.createDashboardEntityState(
+      device.id,
+      entityName: device.name,
+      entityLabel: device.label,
+    );
+    if (context.mounted) {
+      context.push(
+        DashboardRoutes.dashboard,
+        extra: DashboardArgumentsEntity(
+          id: dashboardId,
+          title: device.name,
+          state: state,
+          hideToolbar: false,
+          animate: false,
+        ),
+      );
+    }
+  } catch (e, s) {
+    getIt<TbLogger>().error('LiveTrackingPage: failed to open device', e, s);
+  }
+}
+
+/// Tiles describing where fixes are saved: target entity (a link when its
+/// type has a details page) and the dashboard the session was started from
+/// (a link when its id is known).
+List<Widget> _saveConfigTiles(
+  BuildContext context,
+  LiveTrackingConfig config,
+  String targetName,
+) {
+  final target = config.target;
+  final targetLinkable = _targetHasDetailsPage(target.entityType);
+  final dashboard = config.dashboard;
+  final dashboardId = dashboard?.id;
+  return [
+    ListTile(
+      title: Text(S.of(context).liveTrackingTarget),
+      subtitle: Text(
+        targetName,
+        style: targetLinkable ? _linkStyle(context) : null,
+      ),
+      onTap: targetLinkable ? () => _openTargetEntity(context, target) : null,
+    ),
+    if (dashboard != null)
+      ListTile(
+        title: Text(S.of(context).liveTrackingDashboard),
+        subtitle: Text(
+          dashboard.title ?? dashboardId ?? '',
+          style: dashboardId != null ? _linkStyle(context) : null,
+        ),
+        onTap:
+            dashboardId != null
+                ? () =>
+                    context.push('${DashboardRoutes.dashboard}/$dashboardId')
+                : null,
+      ),
+  ];
 }
 
 class _ActiveSession extends ConsumerWidget {
@@ -35,24 +167,42 @@ class _ActiveSession extends ConsumerWidget {
     final nameAsync = ref.watch(
       targetNameProvider(entityType: target.entityType, id: target.id),
     );
-    final name = displayTargetName(nameAsync.valueOrNull, target);
+    final name = displayTargetName(
+      nameAsync.valueOrNull ?? session.config.targetName,
+      target,
+    );
+    final statusColor =
+        tracking
+            ? AppColors.notificationSuccess
+            : AppColors.notificationWarning;
     return ListView(
       children: [
-        ListTile(
-          title: Text(S.of(context).liveTrackingTarget),
-          subtitle: Text(name),
-        ),
+        ..._saveConfigTiles(context, session.config, name),
         ListTile(
           title: Text(S.of(context).liveTrackingStatus),
-          subtitle: Text(
-            tracking
-                ? S.of(context).liveTrackingActive
-                : S.of(context).liveTrackingPaused,
+          subtitle: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                tracking ? Icons.play_arrow : Icons.pause,
+                size: 18,
+                color: statusColor,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  tracking
+                      ? S.of(context).liveTrackingActive
+                      : S.of(context).liveTrackingPaused,
+                  style: TextStyle(color: statusColor),
+                ),
+              ),
+            ],
           ),
         ),
         ListTile(
           title: Text(S.of(context).liveTrackingStarted),
-          subtitle: Text(session.startedAt.toLocal().toString()),
+          subtitle: Text(_formatSessionTime(session.startedAt)),
         ),
         ListTile(
           title: Text(
@@ -156,22 +306,28 @@ class _LastSession extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final target = record.config.target;
-    final name = displayTargetName(record.targetName, target);
+    final config = record.config;
+    final name = displayTargetName(
+      record.targetName ?? config.targetName,
+      config.target,
+    );
     return ListView(
       children: [
         ListTile(
-          title: Text(S.of(context).liveTrackingLastSession),
-          subtitle: Text(name),
+          title: Text(
+            S.of(context).liveTrackingLastSession,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
+        ..._saveConfigTiles(context, config, name),
         ListTile(
           title: Text(S.of(context).liveTrackingStarted),
-          subtitle: Text(record.startedAt.toLocal().toString()),
+          subtitle: Text(_formatSessionTime(record.startedAt)),
         ),
         if (record.endedAt != null)
           ListTile(
             title: Text(S.of(context).liveTrackingEnded),
-            subtitle: Text(record.endedAt!.toLocal().toString()),
+            subtitle: Text(_formatSessionTime(record.endedAt!)),
           ),
         ListTile(
           title: Text(S.of(context).liveTrackingEndReason),

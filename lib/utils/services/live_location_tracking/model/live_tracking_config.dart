@@ -97,6 +97,25 @@ class LiveTrackingKey {
   };
 }
 
+/// The dashboard a tracking session was started from, for display and
+/// navigation back to it. Both fields are optional on the wire.
+class LiveTrackingDashboard {
+  const LiveTrackingDashboard({this.id, this.title});
+
+  factory LiveTrackingDashboard.fromJson(Map<String, dynamic> json) =>
+      LiveTrackingDashboard(
+        id: json['id'] as String?,
+        title: json['title'] as String?,
+      );
+
+  final String? id;
+  final String? title;
+
+  bool get isEmpty => id == null && title == null;
+
+  Map<String, dynamic> toJson() => {'id': id, 'title': title};
+}
+
 /// Fully-resolved live tracking session config received from the dashboard
 /// (the web side resolves aliases/attributes to a concrete target entity and
 /// key labels to their effective names before sending).
@@ -104,6 +123,8 @@ class LiveTrackingConfig {
   const LiveTrackingConfig({
     required this.target,
     required this.keys,
+    this.targetName,
+    this.dashboard,
     this.accuracy = LocationAccuracyLevel.balanced,
     this.distanceFilterMeters,
     this.intervalSeconds,
@@ -120,6 +141,13 @@ class LiveTrackingConfig {
     if (keysJson is! List || keysJson.isEmpty) {
       throw const FormatException('Live tracking config is missing keys');
     }
+    final dashboardJson = json['dashboard'];
+    final dashboard =
+        dashboardJson is Map
+            ? LiveTrackingDashboard.fromJson(
+              Map<String, dynamic>.from(dashboardJson),
+            )
+            : null;
     return LiveTrackingConfig(
       target: LiveTrackingTarget.fromJson(
         Map<String, dynamic>.from(targetJson),
@@ -130,6 +158,8 @@ class LiveTrackingConfig {
                 LiveTrackingKey.fromJson(Map<String, dynamic>.from(key as Map)),
           )
           .toList(growable: false),
+      targetName: json['targetName'] as String?,
+      dashboard: dashboard == null || dashboard.isEmpty ? null : dashboard,
       accuracy: _accuracyFromString(json['accuracy'] as String?),
       distanceFilterMeters: (json['distanceFilterMeters'] as num?)?.toInt(),
       intervalSeconds: (json['intervalSeconds'] as num?)?.toInt(),
@@ -140,6 +170,8 @@ class LiveTrackingConfig {
 
   final LiveTrackingTarget target;
   final List<LiveTrackingKey> keys;
+  final String? targetName;
+  final LiveTrackingDashboard? dashboard;
   final LocationAccuracyLevel accuracy;
   final int? distanceFilterMeters;
   final int? intervalSeconds;
@@ -156,6 +188,8 @@ class LiveTrackingConfig {
   Map<String, dynamic> toJson() => {
     'target': target.toJson(),
     'keys': keys.map((key) => key.toJson()).toList(growable: false),
+    'targetName': targetName,
+    'dashboard': dashboard?.toJson(),
     'accuracy': _accuracyToString(accuracy),
     'distanceFilterMeters': distanceFilterMeters,
     'intervalSeconds': intervalSeconds,

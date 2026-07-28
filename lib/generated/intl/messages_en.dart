@@ -481,6 +481,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingActive": MessageLookupByLibrary.simpleMessage(
       "Live location tracking",
     ),
+    "liveTrackingDashboard": MessageLookupByLibrary.simpleMessage("Dashboard"),
     "liveTrackingEndReason": MessageLookupByLibrary.simpleMessage("End reason"),
     "liveTrackingEndReasonInterrupted": MessageLookupByLibrary.simpleMessage(
       "Interrupted",
@@ -491,7 +492,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingEndReasonMaxDuration": MessageLookupByLibrary.simpleMessage(
       "Reached max duration",
     ),
-    "liveTrackingEnded": MessageLookupByLibrary.simpleMessage("Ended"),
+    "liveTrackingEnded": MessageLookupByLibrary.simpleMessage("End time"),
     "liveTrackingErrors": MessageLookupByLibrary.simpleMessage("Errors"),
     "liveTrackingFixes": MessageLookupByLibrary.simpleMessage("Fixes"),
     "liveTrackingHide": MessageLookupByLibrary.simpleMessage("Hide"),
@@ -518,10 +519,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "liveTrackingStartAgain": MessageLookupByLibrary.simpleMessage(
       "Start again",
     ),
-    "liveTrackingStarted": MessageLookupByLibrary.simpleMessage("Started"),
+    "liveTrackingStarted": MessageLookupByLibrary.simpleMessage("Start time"),
     "liveTrackingStatus": MessageLookupByLibrary.simpleMessage("Status"),
     "liveTrackingStop": MessageLookupByLibrary.simpleMessage("Stop"),
-    "liveTrackingTarget": MessageLookupByLibrary.simpleMessage("Target entity"),
+    "liveTrackingTarget": MessageLookupByLibrary.simpleMessage(
+      "Save location to entity",
+    ),
     "login": MessageLookupByLibrary.simpleMessage("Log In"),
     "loginToApp": MessageLookupByLibrary.simpleMessage("Login to app"),
     "loginToYourAccount": MessageLookupByLibrary.simpleMessage(

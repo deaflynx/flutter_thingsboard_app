@@ -2,6 +2,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_location_tracking_service.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/mobile_actions/actions/start_live_location_action.dart';
@@ -9,6 +11,23 @@ import 'package:thingsboard_app/utils/services/mobile_actions/actions/stop_live_
 import 'package:thingsboard_app/utils/services/mobile_actions/widget_mobile_action_type.dart';
 
 class FakeController extends Fake implements InAppWebViewController {}
+
+class FakeStore implements ILiveTrackingStore {
+  LastTrackingRecord? record;
+
+  @override
+  Future<LastTrackingRecord?> read() async => record;
+
+  @override
+  Future<void> write(LastTrackingRecord record) async {
+    this.record = record;
+  }
+
+  @override
+  Future<void> clear() async {
+    record = null;
+  }
+}
 
 class FakeTrackingService implements ILiveLocationTrackingService {
   LiveTrackingConfig? startedWith;
@@ -39,10 +58,13 @@ class FakeTrackingService implements ILiveLocationTrackingService {
 
 void main() {
   late FakeTrackingService tracking;
+  late FakeStore store;
 
   setUp(() {
     tracking = FakeTrackingService();
+    store = FakeStore();
     GetIt.I.registerLazySingleton<ILiveLocationTrackingService>(() => tracking);
+    GetIt.I.registerLazySingleton<ILiveTrackingStore>(() => store);
   });
 
   tearDown(() async {
@@ -104,6 +126,7 @@ void main() {
     tracking.session = LiveTrackingSession(
       config: const LiveTrackingConfig(
         target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+        targetName: 'Test Device B1',
         keys: [
           LiveTrackingKey(
             key: LiveTrackingKeyType.latitude,
@@ -121,8 +144,48 @@ void main() {
     ], FakeController());
 
     expect(tracking.stopped, true);
-    expect(result.toJson()['hasResult'], true);
+    final json = result.toJson();
+    expect(json['hasResult'], true);
+    final resultJson = json['result'] as Map<String, dynamic>;
+    expect(resultJson['launched'], true);
+    final trackingInfo = resultJson['trackingInfo'] as Map<String, dynamic>;
+    expect(trackingInfo['targetName'], 'Test Device B1');
+    expect(trackingInfo['keys'], ['latitude']);
   });
+
+  test(
+    'stop action falls back to the stored name when config has none',
+    () async {
+      tracking.session = LiveTrackingSession(
+        config: const LiveTrackingConfig(
+          target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+          keys: [
+            LiveTrackingKey(
+              key: LiveTrackingKeyType.latitude,
+              label: 'latitude',
+              valueType: LiveTrackingValueType.attribute,
+            ),
+          ],
+        ),
+        status: LiveTrackingStatus.tracking,
+        startedAt: DateTime.fromMillisecondsSinceEpoch(0),
+      );
+      store.record = LastTrackingRecord(
+        configJson: tracking.session!.config.toJson(),
+        targetName: 'Resolved Name',
+        startedAt: DateTime.fromMillisecondsSinceEpoch(0),
+        endReason: TrackingEndReason.interrupted,
+      );
+
+      final result = await StopLiveLocationAction().execute([
+        'stopLiveLocation',
+      ], FakeController());
+
+      final resultJson = result.toJson()['result'] as Map<String, dynamic>;
+      final trackingInfo = resultJson['trackingInfo'] as Map<String, dynamic>;
+      expect(trackingInfo['targetName'], 'Resolved Name');
+    },
+  );
 
   test('stop action with no session returns empty result', () async {
     final result = await StopLiveLocationAction().execute([

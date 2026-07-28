@@ -3389,11 +3389,21 @@ class S {
     );
   }
 
-  /// `Target entity`
+  /// `Save location to entity`
   String get liveTrackingTarget {
     return Intl.message(
-      'Target entity',
+      'Save location to entity',
       name: 'liveTrackingTarget',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Dashboard`
+  String get liveTrackingDashboard {
+    return Intl.message(
+      'Dashboard',
+      name: 'liveTrackingDashboard',
       desc: '',
       args: [],
     );
@@ -3409,10 +3419,10 @@ class S {
     );
   }
 
-  /// `Started`
+  /// `Start time`
   String get liveTrackingStarted {
     return Intl.message(
-      'Started',
+      'Start time',
       name: 'liveTrackingStarted',
       desc: '',
       args: [],
@@ -3479,9 +3489,14 @@ class S {
     );
   }
 
-  /// `Ended`
+  /// `End time`
   String get liveTrackingEnded {
-    return Intl.message('Ended', name: 'liveTrackingEnded', desc: '', args: []);
+    return Intl.message(
+      'End time',
+      name: 'liveTrackingEnded',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `End reason`

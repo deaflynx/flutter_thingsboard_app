@@ -69,6 +69,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     await _store.write(
       LastTrackingRecord(
         configJson: config.toJson(),
+        targetName: config.targetName,
         startedAt: startedAt,
         endReason: TrackingEndReason.interrupted,
       ),

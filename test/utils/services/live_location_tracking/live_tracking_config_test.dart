@@ -11,6 +11,8 @@ void main() {
         {'key': 'LONGITUDE', 'label': 'lng', 'valueType': 'ATTRIBUTE'},
         {'key': 'SPEED', 'label': 'gpsSpeed', 'valueType': 'TIMESERIES'},
       ],
+      'targetName': 'Test Device B1',
+      'dashboard': {'id': 'dash-1', 'title': 'GPS tracker'},
       'accuracy': 'HIGH',
       'distanceFilterMeters': 25,
       'intervalSeconds': 60,
@@ -20,6 +22,9 @@ void main() {
 
     expect(config.target.entityType, 'DEVICE');
     expect(config.target.id, 'abc-123');
+    expect(config.targetName, 'Test Device B1');
+    expect(config.dashboard?.id, 'dash-1');
+    expect(config.dashboard?.title, 'GPS tracker');
     expect(config.keys.length, 3);
     expect(config.keys.first.key, LiveTrackingKeyType.latitude);
     expect(config.keys.first.label, 'lat');
@@ -46,6 +51,20 @@ void main() {
     expect(config.intervalSeconds, isNull);
     expect(config.maxDurationSeconds, isNull);
     expect(config.trackedBy, isNull);
+    expect(config.targetName, isNull);
+    expect(config.dashboard, isNull);
+  });
+
+  test('dashboard with only null fields parses as null', () {
+    final config = LiveTrackingConfig.fromJson(const {
+      'target': {'entityType': 'USER', 'id': 'u-1'},
+      'keys': [
+        {'key': 'LATITUDE', 'label': 'latitude', 'valueType': 'ATTRIBUTE'},
+      ],
+      'dashboard': {'id': null, 'title': null},
+    });
+
+    expect(config.dashboard, isNull);
   });
 
   test('unknown accuracy falls back to balanced', () {
@@ -138,6 +157,8 @@ void main() {
           valueType: LiveTrackingValueType.timeseries,
         ),
       ],
+      targetName: 'Test Device B1',
+      dashboard: LiveTrackingDashboard(id: 'dash-1', title: 'GPS tracker'),
       accuracy: LocationAccuracyLevel.high,
       distanceFilterMeters: 25,
       intervalSeconds: 60,
@@ -154,6 +175,9 @@ void main() {
     expect(restored.keys.first.valueType, LiveTrackingValueType.attribute);
     expect(restored.keys.last.key, LiveTrackingKeyType.heading);
     expect(restored.keys.last.valueType, LiveTrackingValueType.timeseries);
+    expect(restored.targetName, 'Test Device B1');
+    expect(restored.dashboard?.id, 'dash-1');
+    expect(restored.dashboard?.title, 'GPS tracker');
     expect(restored.accuracy, LocationAccuracyLevel.high);
     expect(restored.distanceFilterMeters, 25);
     expect(restored.intervalSeconds, 60);
