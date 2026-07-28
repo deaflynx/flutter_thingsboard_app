@@ -73,15 +73,12 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
         endReason: TrackingEndReason.interrupted,
       ),
     );
-    await _writeStatusAttributes({
-      'gpsActive': true,
-      if (config.trackedBy != null) 'gpsTrackedBy': config.trackedBy,
-    });
+    await _writeTrackingStatus(active: true, includeTrackedBy: true);
     _subscribe(config);
-    final maxDuration = config.maxDurationMinutes;
+    final maxDuration = config.maxDurationSeconds;
     if (maxDuration != null) {
       _maxDurationTimer = Timer(
-        Duration(minutes: maxDuration),
+        Duration(seconds: maxDuration),
         () => _finish(TrackingEndReason.maxDuration),
       );
     }
@@ -129,7 +126,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _cancelSubscription();
     final current = _session;
     if (current != null) {
-      await _writeStatusAttributes({'gpsActive': false});
+      await _writeTrackingStatus(active: false);
       await _updateRecordOnEnd(current, reason);
       _setSession(null);
     }
@@ -165,7 +162,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     }
     _cancelSubscription();
     _setSession(current.copyWith(status: LiveTrackingStatus.paused));
-    await _writeStatusAttributes({'gpsActive': false});
+    await _writeTrackingStatus(active: false);
   }
 
   @override
@@ -177,7 +174,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _setSession(
       current.copyWith(status: LiveTrackingStatus.tracking, lastError: null),
     );
-    await _writeStatusAttributes({'gpsActive': true});
+    await _writeTrackingStatus(active: true, includeTrackedBy: true);
     _subscribe(current.config);
   }
 
@@ -220,26 +217,16 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
   }
 
   Future<void> _saveFix(LiveTrackingConfig config, GeoPosition position) async {
-    final values = <String, dynamic>{
-      config.latitudeKey: position.latitude,
-      config.longitudeKey: position.longitude,
-      if (config.includeMetadata) ...{
-        'gpsAccuracy': position.accuracy,
-        if (position.altitude != null) 'gpsAltitude': position.altitude,
-        if (position.speed != null) 'gpsSpeed': position.speed,
-        if (position.heading != null) 'gpsHeading': position.heading,
-      },
-    };
     final ts = (position.timestamp ?? DateTime.now()).millisecondsSinceEpoch;
     try {
-      await _remote.saveTelemetry(config.target, ts, values);
-      final attributes = <String, dynamic>{
-        if (config.mirrorToAttributes) ...values,
-        if (config.writeStatusAttributes) 'gpsLastUpdateTime': ts,
-      };
-      if (attributes.isNotEmpty) {
-        await _remote.saveAttributes(config.target, attributes);
-      }
+      await _save(config, {
+        LiveTrackingKeyType.latitude: position.latitude,
+        LiveTrackingKeyType.longitude: position.longitude,
+        LiveTrackingKeyType.accuracy: position.accuracy,
+        LiveTrackingKeyType.altitude: position.altitude,
+        LiveTrackingKeyType.speed: position.speed,
+        LiveTrackingKeyType.heading: position.heading,
+      }, ts: ts);
       final current = _session;
       if (current != null) {
         _setSession(current.copyWith(savedCount: current.savedCount + 1));
@@ -267,7 +254,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _setSession(
       current.copyWith(status: LiveTrackingStatus.paused, lastError: message),
     );
-    await _writeStatusAttributes({'gpsActive': false});
+    await _writeTrackingStatus(active: false);
   }
 
   /// Fire-and-forget teardown: [StreamSubscription.cancel] detaches the
@@ -278,15 +265,56 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _subscription = null;
   }
 
-  Future<void> _writeStatusAttributes(Map<String, dynamic> attributes) async {
+  Future<void> _writeTrackingStatus({
+    required bool active,
+    bool includeTrackedBy = false,
+  }) async {
     final config = _session?.config;
-    if (config == null || !config.writeStatusAttributes) {
+    if (config == null) {
       return;
     }
     try {
-      await _remote.saveAttributes(config.target, attributes);
+      await _save(config, {
+        LiveTrackingKeyType.gpsActive: active,
+        if (includeTrackedBy)
+          LiveTrackingKeyType.gpsTrackedBy: config.trackedBy,
+      });
     } catch (e, s) {
-      _log.error('LiveLocationTrackingService: status attributes failed', e, s);
+      _log.error('LiveLocationTrackingService: tracking status failed', e, s);
+    }
+  }
+
+  /// Routes each configured key to attributes or time series under the label
+  /// the dashboard resolved for it. Values the dashboard did not ask for — and
+  /// values the device could not provide — are skipped.
+  Future<void> _save(
+    LiveTrackingConfig config,
+    Map<LiveTrackingKeyType, dynamic> values, {
+    int? ts,
+  }) async {
+    final attributes = <String, dynamic>{};
+    final telemetry = <String, dynamic>{};
+    for (final key in config.keys) {
+      final value = values[key.key];
+      if (value == null) {
+        continue;
+      }
+      switch (key.valueType) {
+        case LiveTrackingValueType.attribute:
+          attributes[key.label] = value;
+        case LiveTrackingValueType.timeseries:
+          telemetry[key.label] = value;
+      }
+    }
+    if (telemetry.isNotEmpty) {
+      await _remote.saveTelemetry(
+        config.target,
+        ts ?? DateTime.now().millisecondsSinceEpoch,
+        telemetry,
+      );
+    }
+    if (attributes.isNotEmpty) {
+      await _remote.saveAttributes(config.target, attributes);
     }
   }
 

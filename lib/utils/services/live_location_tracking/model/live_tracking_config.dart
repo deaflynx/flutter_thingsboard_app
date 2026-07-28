@@ -20,21 +20,94 @@ class LiveTrackingTarget {
   Map<String, dynamic> toJson() => {'entityType': entityType, 'id': id};
 }
 
+/// Location values the dashboard can ask the app to save. Mirrors the
+/// `LocationKey` enum on the web side.
+enum LiveTrackingKeyType {
+  latitude('LATITUDE'),
+  longitude('LONGITUDE'),
+  accuracy('ACCURACY'),
+  altitude('ALTITUDE'),
+  speed('SPEED'),
+  heading('HEADING'),
+  gpsActive('GPS_ACTIVE'),
+  gpsTrackedBy('GPS_TRACKED_BY');
+
+  const LiveTrackingKeyType(this.wireValue);
+
+  final String wireValue;
+
+  static LiveTrackingKeyType? fromWireValue(String? value) {
+    for (final type in LiveTrackingKeyType.values) {
+      if (type.wireValue == value) {
+        return type;
+      }
+    }
+    return null;
+  }
+}
+
+enum LiveTrackingValueType {
+  attribute('ATTRIBUTE'),
+  timeseries('TIMESERIES');
+
+  const LiveTrackingValueType(this.wireValue);
+
+  final String wireValue;
+
+  static LiveTrackingValueType fromWireValue(String? value) =>
+      value == LiveTrackingValueType.timeseries.wireValue
+          ? LiveTrackingValueType.timeseries
+          : LiveTrackingValueType.attribute;
+}
+
+/// One configured value: which location field to save, under which entity key,
+/// and whether it lands in server attributes or time series.
+class LiveTrackingKey {
+  const LiveTrackingKey({
+    required this.key,
+    required this.label,
+    required this.valueType,
+  });
+
+  factory LiveTrackingKey.fromJson(Map<String, dynamic> json) {
+    final key = LiveTrackingKeyType.fromWireValue(json['key'] as String?);
+    final label = json['label'];
+    if (key == null || label is! String || label.isEmpty) {
+      throw const FormatException(
+        'Live tracking key must contain a known key and a non-empty label',
+      );
+    }
+    return LiveTrackingKey(
+      key: key,
+      label: label,
+      valueType: LiveTrackingValueType.fromWireValue(
+        json['valueType'] as String?,
+      ),
+    );
+  }
+
+  final LiveTrackingKeyType key;
+  final String label;
+  final LiveTrackingValueType valueType;
+
+  Map<String, dynamic> toJson() => {
+    'key': key.wireValue,
+    'label': label,
+    'valueType': valueType.wireValue,
+  };
+}
+
 /// Fully-resolved live tracking session config received from the dashboard
-/// (the web side resolves aliases/attributes to a concrete target entity
-/// before sending — see the phase 1c wire protocol in the plan doc).
+/// (the web side resolves aliases/attributes to a concrete target entity and
+/// key labels to their effective names before sending).
 class LiveTrackingConfig {
   const LiveTrackingConfig({
     required this.target,
-    this.latitudeKey = 'latitude',
-    this.longitudeKey = 'longitude',
-    this.includeMetadata = false,
-    this.mirrorToAttributes = false,
+    required this.keys,
     this.accuracy = LocationAccuracyLevel.balanced,
     this.distanceFilterMeters,
     this.intervalSeconds,
-    this.maxDurationMinutes,
-    this.writeStatusAttributes = true,
+    this.maxDurationSeconds,
     this.trackedBy,
   });
 
@@ -43,33 +116,34 @@ class LiveTrackingConfig {
     if (targetJson is! Map) {
       throw const FormatException('Live tracking config is missing target');
     }
+    final keysJson = json['keys'];
+    if (keysJson is! List || keysJson.isEmpty) {
+      throw const FormatException('Live tracking config is missing keys');
+    }
     return LiveTrackingConfig(
       target: LiveTrackingTarget.fromJson(
         Map<String, dynamic>.from(targetJson),
       ),
-      latitudeKey: json['latitudeKey'] as String? ?? 'latitude',
-      longitudeKey: json['longitudeKey'] as String? ?? 'longitude',
-      includeMetadata: json['includeMetadata'] as bool? ?? false,
-      mirrorToAttributes: json['mirrorToAttributes'] as bool? ?? false,
+      keys: keysJson
+          .map(
+            (key) =>
+                LiveTrackingKey.fromJson(Map<String, dynamic>.from(key as Map)),
+          )
+          .toList(growable: false),
       accuracy: _accuracyFromString(json['accuracy'] as String?),
       distanceFilterMeters: (json['distanceFilterMeters'] as num?)?.toInt(),
       intervalSeconds: (json['intervalSeconds'] as num?)?.toInt(),
-      maxDurationMinutes: (json['maxDurationMinutes'] as num?)?.toInt(),
-      writeStatusAttributes: json['writeStatusAttributes'] as bool? ?? true,
+      maxDurationSeconds: (json['maxDurationSeconds'] as num?)?.toInt(),
       trackedBy: json['trackedBy'] as String?,
     );
   }
 
   final LiveTrackingTarget target;
-  final String latitudeKey;
-  final String longitudeKey;
-  final bool includeMetadata;
-  final bool mirrorToAttributes;
+  final List<LiveTrackingKey> keys;
   final LocationAccuracyLevel accuracy;
   final int? distanceFilterMeters;
   final int? intervalSeconds;
-  final int? maxDurationMinutes;
-  final bool writeStatusAttributes;
+  final int? maxDurationSeconds;
   final String? trackedBy;
 
   static LocationAccuracyLevel _accuracyFromString(String? value) =>
@@ -81,15 +155,11 @@ class LiveTrackingConfig {
 
   Map<String, dynamic> toJson() => {
     'target': target.toJson(),
-    'latitudeKey': latitudeKey,
-    'longitudeKey': longitudeKey,
-    'includeMetadata': includeMetadata,
-    'mirrorToAttributes': mirrorToAttributes,
+    'keys': keys.map((key) => key.toJson()).toList(growable: false),
     'accuracy': _accuracyToString(accuracy),
     'distanceFilterMeters': distanceFilterMeters,
     'intervalSeconds': intervalSeconds,
-    'maxDurationMinutes': maxDurationMinutes,
-    'writeStatusAttributes': writeStatusAttributes,
+    'maxDurationSeconds': maxDurationSeconds,
     'trackedBy': trackedBy,
   };
 

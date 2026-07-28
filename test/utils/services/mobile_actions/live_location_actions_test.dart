@@ -67,6 +67,9 @@ void main() {
         'startLiveLocation',
         {
           'target': {'entityType': 'DEVICE', 'id': 'd-1'},
+          'keys': [
+            {'key': 'LATITUDE', 'label': 'latitude', 'valueType': 'ATTRIBUTE'},
+          ],
           'trackedBy': 'me@tb.io',
         },
       ], FakeController());
@@ -91,7 +94,7 @@ void main() {
   test('start action with malformed target returns an error result', () async {
     final result = await StartLiveLocationAction().execute([
       'startLiveLocation',
-      {'latitudeKey': 'lat'},
+      {'keys': <dynamic>[]},
     ], FakeController());
 
     expect(result.toJson()['hasError'], true);
@@ -101,6 +104,13 @@ void main() {
     tracking.session = LiveTrackingSession(
       config: const LiveTrackingConfig(
         target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+        keys: [
+          LiveTrackingKey(
+            key: LiveTrackingKeyType.latitude,
+            label: 'latitude',
+            valueType: LiveTrackingValueType.attribute,
+          ),
+        ],
       ),
       status: LiveTrackingStatus.tracking,
       startedAt: DateTime.fromMillisecondsSinceEpoch(0),

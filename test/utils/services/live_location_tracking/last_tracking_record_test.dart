@@ -5,6 +5,9 @@ void main() {
   final json = {
     'configJson': {
       'target': {'entityType': 'DEVICE', 'id': 'd-1'},
+      'keys': [
+        {'key': 'LATITUDE', 'label': 'latitude', 'valueType': 'ATTRIBUTE'},
+      ],
     },
     'targetName': 'My Tracker',
     'startedAt': 1720000000000,

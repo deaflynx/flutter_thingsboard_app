@@ -66,6 +66,13 @@ void main() {
     tracking.session = LiveTrackingSession(
       config: const LiveTrackingConfig(
         target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+        keys: [
+          LiveTrackingKey(
+            key: LiveTrackingKeyType.latitude,
+            label: 'latitude',
+            valueType: LiveTrackingValueType.attribute,
+          ),
+        ],
       ),
       status: LiveTrackingStatus.tracking,
       startedAt: DateTime.fromMillisecondsSinceEpoch(0),
@@ -87,6 +94,13 @@ void main() {
       tracking.session = LiveTrackingSession(
         config: const LiveTrackingConfig(
           target: LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1'),
+          keys: [
+            LiveTrackingKey(
+              key: LiveTrackingKeyType.latitude,
+              label: 'latitude',
+              valueType: LiveTrackingValueType.attribute,
+            ),
+          ],
         ),
         status: LiveTrackingStatus.tracking,
         startedAt: DateTime.fromMillisecondsSinceEpoch(0),

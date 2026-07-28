@@ -101,8 +101,38 @@ class FakeRemote implements ILiveTrackingRemote {
   }
 }
 
+LiveTrackingKey _key(
+  LiveTrackingKeyType key,
+  String label,
+  LiveTrackingValueType valueType,
+) => LiveTrackingKey(key: key, label: label, valueType: valueType);
+
 void main() {
   const target = LiveTrackingTarget(entityType: 'DEVICE', id: 'd-1');
+  final positionKeys = [
+    _key(
+      LiveTrackingKeyType.latitude,
+      'latitude',
+      LiveTrackingValueType.attribute,
+    ),
+    _key(
+      LiveTrackingKeyType.longitude,
+      'longitude',
+      LiveTrackingValueType.attribute,
+    ),
+  ];
+  final statusKeys = [
+    _key(
+      LiveTrackingKeyType.gpsActive,
+      'gpsActive',
+      LiveTrackingValueType.attribute,
+    ),
+    _key(
+      LiveTrackingKeyType.gpsTrackedBy,
+      'gpsTrackedBy',
+      LiveTrackingValueType.attribute,
+    ),
+  ];
   final fix = GeoPosition(
     latitude: 1,
     longitude: 2,
@@ -111,6 +141,17 @@ void main() {
     altitude: 100,
     speed: 3,
     heading: 90,
+  );
+
+  LiveTrackingConfig configOf({
+    List<LiveTrackingKey>? keys,
+    String? trackedBy,
+    int? maxDurationSeconds,
+  }) => LiveTrackingConfig(
+    target: target,
+    keys: keys ?? positionKeys,
+    trackedBy: trackedBy,
+    maxDurationSeconds: maxDurationSeconds,
   );
 
   late FakeLocationService location;
@@ -133,9 +174,9 @@ void main() {
     );
   });
 
-  test('start emits a tracking session and writes status attributes', () async {
+  test('start emits a tracking session and writes status keys', () async {
     await service.start(
-      const LiveTrackingConfig(target: target, trackedBy: 'me@tb.io'),
+      configOf(keys: [...positionKeys, ...statusKeys], trackedBy: 'me@tb.io'),
     );
 
     expect(service.session?.status, LiveTrackingStatus.tracking);
@@ -146,48 +187,69 @@ void main() {
     expect(location.lastSettings?.background, isNotNull);
   });
 
-  test('start with writeStatusAttributes=false writes nothing', () async {
-    await service.start(
-      const LiveTrackingConfig(target: target, writeStatusAttributes: false),
-    );
+  test('start without status keys configured writes nothing', () async {
+    await service.start(configOf(trackedBy: 'me@tb.io'));
 
     expect(remote.attributeCalls, isEmpty);
   });
 
-  test(
-    'fix saves telemetry with configured keys and gpsLastUpdateTime',
-    () async {
-      await service.start(
-        const LiveTrackingConfig(
-          target: target,
-          latitudeKey: 'lat',
-          longitudeKey: 'lng',
-        ),
-      );
-      remote.attributeCalls.clear();
-
-      location.controller!.add(LocationSuccess(fix));
-      await pumpEventQueue();
-
-      final (savedTarget, ts, values) = remote.telemetryCalls.single;
-      expect(savedTarget.id, 'd-1');
-      expect(ts, 1720000000000);
-      expect(values, {'lat': 1.0, 'lng': 2.0});
-      expect(remote.attributeCalls.single.$2, {
-        'gpsLastUpdateTime': 1720000000000,
-      });
-      expect(service.session?.fixCount, 1);
-      expect(service.session?.savedCount, 1);
-      expect(service.session?.lastFix, fix);
-    },
-  );
-
-  test('includeMetadata adds gps metadata telemetry keys', () async {
+  test('fix routes each configured key to its label and value type', () async {
     await service.start(
-      const LiveTrackingConfig(
-        target: target,
-        includeMetadata: true,
-        writeStatusAttributes: false,
+      configOf(
+        keys: [
+          _key(
+            LiveTrackingKeyType.latitude,
+            'lat',
+            LiveTrackingValueType.attribute,
+          ),
+          _key(
+            LiveTrackingKeyType.longitude,
+            'lng',
+            LiveTrackingValueType.attribute,
+          ),
+          _key(
+            LiveTrackingKeyType.accuracy,
+            'gpsAccuracy',
+            LiveTrackingValueType.timeseries,
+          ),
+          _key(
+            LiveTrackingKeyType.speed,
+            'gpsSpeed',
+            LiveTrackingValueType.timeseries,
+          ),
+        ],
+      ),
+    );
+    remote.attributeCalls.clear();
+
+    location.controller!.add(LocationSuccess(fix));
+    await pumpEventQueue();
+
+    final (savedTarget, ts, values) = remote.telemetryCalls.single;
+    expect(savedTarget.id, 'd-1');
+    expect(ts, 1720000000000);
+    expect(values, {'gpsAccuracy': 5.0, 'gpsSpeed': 3.0});
+    expect(remote.attributeCalls.single.$2, {'lat': 1.0, 'lng': 2.0});
+    expect(service.session?.fixCount, 1);
+    expect(service.session?.savedCount, 1);
+    expect(service.session?.lastFix, fix);
+  });
+
+  test('values the dashboard did not ask for are not saved', () async {
+    await service.start(
+      configOf(
+        keys: [
+          _key(
+            LiveTrackingKeyType.latitude,
+            'latitude',
+            LiveTrackingValueType.timeseries,
+          ),
+          _key(
+            LiveTrackingKeyType.longitude,
+            'longitude',
+            LiveTrackingValueType.timeseries,
+          ),
+        ],
       ),
     );
 
@@ -197,31 +259,22 @@ void main() {
     expect(remote.telemetryCalls.single.$3, {
       'latitude': 1.0,
       'longitude': 2.0,
-      'gpsAccuracy': 5.0,
-      'gpsAltitude': 100.0,
-      'gpsSpeed': 3.0,
-      'gpsHeading': 90.0,
     });
-  });
-
-  test('mirrorToAttributes copies values into the attribute save', () async {
-    await service.start(
-      const LiveTrackingConfig(target: target, mirrorToAttributes: true),
-    );
-    remote.attributeCalls.clear();
-
-    location.controller!.add(LocationSuccess(fix));
-    await pumpEventQueue();
-
-    expect(remote.attributeCalls.single.$2, {
-      'latitude': 1.0,
-      'longitude': 2.0,
-      'gpsLastUpdateTime': 1720000000000,
-    });
+    expect(remote.attributeCalls, isEmpty);
   });
 
   test('save failure increments saveErrorCount and keeps tracking', () async {
-    await service.start(const LiveTrackingConfig(target: target));
+    await service.start(
+      configOf(
+        keys: [
+          _key(
+            LiveTrackingKeyType.latitude,
+            'latitude',
+            LiveTrackingValueType.timeseries,
+          ),
+        ],
+      ),
+    );
     remote.throwOnTelemetry = Exception('boom');
 
     location.controller!.add(LocationSuccess(fix));
@@ -236,7 +289,7 @@ void main() {
   test(
     'pause cancels the stream and writes gpsActive=false; resume restores',
     () async {
-      await service.start(const LiveTrackingConfig(target: target));
+      await service.start(configOf(keys: [...positionKeys, ...statusKeys]));
       remote.attributeCalls.clear();
 
       await service.pause();
@@ -253,7 +306,7 @@ void main() {
   );
 
   test('stop clears the session and writes gpsActive=false', () async {
-    await service.start(const LiveTrackingConfig(target: target));
+    await service.start(configOf(keys: [...positionKeys, ...statusKeys]));
     remote.attributeCalls.clear();
     final emissions = <LiveTrackingSession?>[];
     final sub = service.sessionStream.listen(emissions.add);
@@ -270,7 +323,7 @@ void main() {
   test(
     'terminal permission failure pauses the session with an error',
     () async {
-      await service.start(const LiveTrackingConfig(target: target));
+      await service.start(configOf());
 
       location.controller!.add(const LocationPermissionDenied());
       await pumpEventQueue();
@@ -280,11 +333,9 @@ void main() {
     },
   );
 
-  test('maxDurationMinutes auto-stops the session', () {
+  test('maxDurationSeconds auto-stops the session', () {
     fakeAsync((async) {
-      service.start(
-        const LiveTrackingConfig(target: target, maxDurationMinutes: 5),
-      );
+      service.start(configOf(maxDurationSeconds: 300));
       async.flushMicrotasks();
       expect(service.session, isNotNull);
 
@@ -295,7 +346,7 @@ void main() {
   });
 
   test('start writes an interrupted record with the resolved name', () async {
-    await service.start(const LiveTrackingConfig(target: target));
+    await service.start(configOf());
     // Name resolution now happens off the critical path (see finding #1);
     // let its fire-and-forget patch land before asserting on it.
     await pumpEventQueue();
@@ -310,7 +361,7 @@ void main() {
     final resolverCompleter = Completer<String?>();
     nameResolver.pendingCompleter = resolverCompleter;
 
-    unawaited(service.start(const LiveTrackingConfig(target: target)));
+    unawaited(service.start(configOf()));
     await pumpEventQueue();
 
     // The interrupted record and GPS subscription must already exist
@@ -349,7 +400,7 @@ void main() {
   });
 
   test('stop updates the record with manual end reason and counts', () async {
-    await service.start(const LiveTrackingConfig(target: target));
+    await service.start(configOf());
     location.controller!.add(LocationSuccess(fix));
     await pumpEventQueue();
 
@@ -364,9 +415,7 @@ void main() {
 
   test('max-duration end writes maxDuration reason', () {
     fakeAsync((async) {
-      service.start(
-        const LiveTrackingConfig(target: target, maxDurationMinutes: 5),
-      );
+      service.start(configOf(maxDurationSeconds: 300));
       async.flushMicrotasks();
       async.elapse(const Duration(minutes: 5, seconds: 1));
       async.flushMicrotasks();

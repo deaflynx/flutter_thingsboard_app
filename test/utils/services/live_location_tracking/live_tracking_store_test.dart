@@ -33,6 +33,9 @@ void main() {
   final record = LastTrackingRecord(
     configJson: const {
       'target': {'entityType': 'DEVICE', 'id': 'd-1'},
+      'keys': [
+        {'key': 'LATITUDE', 'label': 'latitude', 'valueType': 'ATTRIBUTE'},
+      ],
     },
     startedAt: DateTime.fromMillisecondsSinceEpoch(1720000000000),
     endReason: TrackingEndReason.interrupted,
