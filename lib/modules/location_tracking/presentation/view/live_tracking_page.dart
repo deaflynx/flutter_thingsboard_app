@@ -15,6 +15,7 @@ import 'package:thingsboard_app/utils/services/device_profile/device_profile_cac
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_tracking_display.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_error.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/overlay_service/i_overlay_service.dart';
 import 'package:thingsboard_app/utils/services/tb_client_service/i_tb_client_service.dart';
@@ -46,6 +47,24 @@ TextStyle _linkStyle(BuildContext context) {
     decorationColor: color,
   );
 }
+
+String _errorLabel(
+  BuildContext context,
+  LiveTrackingError error,
+) => switch (error) {
+  LiveTrackingError.targetNotFound =>
+    S.of(context).liveTrackingErrorTargetNotFound,
+  LiveTrackingError.noConnection => S.of(context).liveTrackingErrorNoConnection,
+  LiveTrackingError.unauthorized => S.of(context).liveTrackingErrorUnauthorized,
+  LiveTrackingError.saveFailed => S.of(context).liveTrackingErrorSaveFailed,
+  LiveTrackingError.locationServicesDisabled =>
+    S.of(context).liveTrackingErrorServicesDisabled,
+  LiveTrackingError.locationPermissionDenied =>
+    S.of(context).liveTrackingErrorPermissionDenied,
+  LiveTrackingError.locationPermissionDeniedForever =>
+    S.of(context).liveTrackingErrorPermissionDeniedForever,
+  LiveTrackingError.locationError => S.of(context).liveTrackingErrorLocation,
+};
 
 bool _targetHasDetailsPage(String entityType) => switch (entityType) {
   'DEVICE' || 'ASSET' || 'CUSTOMER' => true,
@@ -224,7 +243,7 @@ class _ActiveSession extends ConsumerWidget {
           ListTile(
             title: Text(S.of(context).liveTrackingLastError),
             subtitle: Text(
-              session.lastError!,
+              _errorLabel(context, session.lastError!),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),

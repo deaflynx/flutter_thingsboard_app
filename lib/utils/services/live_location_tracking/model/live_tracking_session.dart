@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_error.dart';
 import 'package:thingsboard_app/utils/services/location/model/geo_position.dart';
 
 part 'live_tracking_session.freezed.dart';
@@ -16,6 +17,6 @@ abstract class LiveTrackingSession with _$LiveTrackingSession {
     @Default(0) int savedCount,
     @Default(0) int saveErrorCount,
     GeoPosition? lastFix,
-    String? lastError,
+    LiveTrackingError? lastError,
   }) = _LiveTrackingSession;
 }

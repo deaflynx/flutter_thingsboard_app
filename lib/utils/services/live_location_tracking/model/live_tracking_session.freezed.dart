@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LiveTrackingSession {
 
- LiveTrackingConfig get config; LiveTrackingStatus get status; DateTime get startedAt; int get fixCount; int get savedCount; int get saveErrorCount; GeoPosition? get lastFix; String? get lastError;
+ LiveTrackingConfig get config; LiveTrackingStatus get status; DateTime get startedAt; int get fixCount; int get savedCount; int get saveErrorCount; GeoPosition? get lastFix; LiveTrackingError? get lastError;
 /// Create a copy of LiveTrackingSession
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,7 +45,7 @@ abstract mixin class $LiveTrackingSessionCopyWith<$Res>  {
   factory $LiveTrackingSessionCopyWith(LiveTrackingSession value, $Res Function(LiveTrackingSession) _then) = _$LiveTrackingSessionCopyWithImpl;
 @useResult
 $Res call({
- LiveTrackingConfig config, LiveTrackingStatus status, DateTime startedAt, int fixCount, int savedCount, int saveErrorCount, GeoPosition? lastFix, String? lastError
+ LiveTrackingConfig config, LiveTrackingStatus status, DateTime startedAt, int fixCount, int savedCount, int saveErrorCount, GeoPosition? lastFix, LiveTrackingError? lastError
 });
 
 
@@ -72,7 +72,7 @@ as int,savedCount: null == savedCount ? _self.savedCount : savedCount // ignore:
 as int,saveErrorCount: null == saveErrorCount ? _self.saveErrorCount : saveErrorCount // ignore: cast_nullable_to_non_nullable
 as int,lastFix: freezed == lastFix ? _self.lastFix : lastFix // ignore: cast_nullable_to_non_nullable
 as GeoPosition?,lastError: freezed == lastError ? _self.lastError : lastError // ignore: cast_nullable_to_non_nullable
-as String?,
+as LiveTrackingError?,
   ));
 }
 /// Create a copy of LiveTrackingSession
@@ -169,7 +169,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  String? lastError)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  LiveTrackingError? lastError)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LiveTrackingSession() when $default != null:
 return $default(_that.config,_that.status,_that.startedAt,_that.fixCount,_that.savedCount,_that.saveErrorCount,_that.lastFix,_that.lastError);case _:
@@ -190,7 +190,7 @@ return $default(_that.config,_that.status,_that.startedAt,_that.fixCount,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  String? lastError)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  LiveTrackingError? lastError)  $default,) {final _that = this;
 switch (_that) {
 case _LiveTrackingSession():
 return $default(_that.config,_that.status,_that.startedAt,_that.fixCount,_that.savedCount,_that.saveErrorCount,_that.lastFix,_that.lastError);case _:
@@ -210,7 +210,7 @@ return $default(_that.config,_that.status,_that.startedAt,_that.fixCount,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  String? lastError)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LiveTrackingConfig config,  LiveTrackingStatus status,  DateTime startedAt,  int fixCount,  int savedCount,  int saveErrorCount,  GeoPosition? lastFix,  LiveTrackingError? lastError)?  $default,) {final _that = this;
 switch (_that) {
 case _LiveTrackingSession() when $default != null:
 return $default(_that.config,_that.status,_that.startedAt,_that.fixCount,_that.savedCount,_that.saveErrorCount,_that.lastFix,_that.lastError);case _:
@@ -235,7 +235,7 @@ class _LiveTrackingSession implements LiveTrackingSession {
 @override@JsonKey() final  int savedCount;
 @override@JsonKey() final  int saveErrorCount;
 @override final  GeoPosition? lastFix;
-@override final  String? lastError;
+@override final  LiveTrackingError? lastError;
 
 /// Create a copy of LiveTrackingSession
 /// with the given fields replaced by the non-null parameter values.
@@ -267,7 +267,7 @@ abstract mixin class _$LiveTrackingSessionCopyWith<$Res> implements $LiveTrackin
   factory _$LiveTrackingSessionCopyWith(_LiveTrackingSession value, $Res Function(_LiveTrackingSession) _then) = __$LiveTrackingSessionCopyWithImpl;
 @override @useResult
 $Res call({
- LiveTrackingConfig config, LiveTrackingStatus status, DateTime startedAt, int fixCount, int savedCount, int saveErrorCount, GeoPosition? lastFix, String? lastError
+ LiveTrackingConfig config, LiveTrackingStatus status, DateTime startedAt, int fixCount, int savedCount, int saveErrorCount, GeoPosition? lastFix, LiveTrackingError? lastError
 });
 
 
@@ -294,7 +294,7 @@ as int,savedCount: null == savedCount ? _self.savedCount : savedCount // ignore:
 as int,saveErrorCount: null == saveErrorCount ? _self.saveErrorCount : saveErrorCount // ignore: cast_nullable_to_non_nullable
 as int,lastFix: freezed == lastFix ? _self.lastFix : lastFix // ignore: cast_nullable_to_non_nullable
 as GeoPosition?,lastError: freezed == lastError ? _self.lastError : lastError // ignore: cast_nullable_to_non_nullable
-as String?,
+as LiveTrackingError?,
   ));
 }
 

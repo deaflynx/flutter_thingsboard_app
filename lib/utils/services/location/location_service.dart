@@ -32,7 +32,7 @@ class LocationService implements ILocationService {
       return LocationSuccess(_toGeoPosition(position));
     } catch (e, s) {
       _log.error('LocationService.getCurrentPosition failed', e, s);
-      return LocationFixError(e.toString());
+      return _fixFromPlatformError(e);
     }
   }
 
@@ -57,11 +57,21 @@ class LocationService implements ILocationService {
                 sink.add(LocationSuccess(_toGeoPosition(position))),
         handleError: (e, s, sink) {
           _log.error('LocationService.positionStream error', e, s);
-          sink.add(LocationFixError(e.toString()));
+          sink.add(_fixFromPlatformError(e));
         },
       ),
     );
   }
+
+  /// Geolocator reports a mid-stream loss of location availability as a
+  /// stream *error*, not as a status; mapping it back to the sealed cases
+  /// keeps the "services disabled" / "permission denied" handling identical
+  /// whether it happens at start or mid-session.
+  LocationFix _fixFromPlatformError(Object e) => switch (e) {
+    LocationServiceDisabledException() => const LocationServicesDisabled(),
+    PermissionDeniedException() => const LocationPermissionDenied(),
+    _ => LocationFixError(e.toString()),
+  };
 
   @override
   Future<bool> openLocationSettings() => _geolocator.openLocationSettings();

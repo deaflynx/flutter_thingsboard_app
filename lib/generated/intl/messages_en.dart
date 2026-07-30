@@ -493,6 +493,31 @@ class MessageLookup extends MessageLookupByLibrary {
       "Reached max duration",
     ),
     "liveTrackingEnded": MessageLookupByLibrary.simpleMessage("End time"),
+    "liveTrackingErrorLocation": MessageLookupByLibrary.simpleMessage(
+      "Couldn\'t get a location fix.",
+    ),
+    "liveTrackingErrorNoConnection": MessageLookupByLibrary.simpleMessage(
+      "No connection to the server. These fixes weren\'t saved — saving resumes when you\'re back online.",
+    ),
+    "liveTrackingErrorPermissionDenied": MessageLookupByLibrary.simpleMessage(
+      "Location permission was denied.",
+    ),
+    "liveTrackingErrorPermissionDeniedForever":
+        MessageLookupByLibrary.simpleMessage(
+          "Location permission is permanently denied. Enable it in the app settings.",
+        ),
+    "liveTrackingErrorSaveFailed": MessageLookupByLibrary.simpleMessage(
+      "Couldn\'t save this fix to the server. Saving retries with the next fix.",
+    ),
+    "liveTrackingErrorServicesDisabled": MessageLookupByLibrary.simpleMessage(
+      "Location services are turned off on this device.",
+    ),
+    "liveTrackingErrorTargetNotFound": MessageLookupByLibrary.simpleMessage(
+      "Can\'t save to this entity — it no longer exists. Tracking continues; update the target in the dashboard action.",
+    ),
+    "liveTrackingErrorUnauthorized": MessageLookupByLibrary.simpleMessage(
+      "Your session ended. Sign in again to keep saving location.",
+    ),
     "liveTrackingErrors": MessageLookupByLibrary.simpleMessage("Errors"),
     "liveTrackingFixes": MessageLookupByLibrary.simpleMessage("Fixes"),
     "liveTrackingHide": MessageLookupByLibrary.simpleMessage("Hide"),

@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_location_tracking_service.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_notifications.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_remote.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_error.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/location/i_location_service.dart';
 import 'package:thingsboard_app/utils/services/location/model/geo_position.dart';
@@ -20,6 +22,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     required TbLogger logger,
     required ILiveTrackingStore store,
     required IEntityNameResolver nameResolver,
+    required ILiveTrackingNotifications notifications,
     // Android notification strings are OS-level, set once at construction;
     // English defaults are acceptable for v1 (the locator can later pass
     // localized strings without touching this class).
@@ -31,13 +34,15 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
        _remote = remote,
        _log = logger,
        _store = store,
-       _nameResolver = nameResolver;
+       _nameResolver = nameResolver,
+       _notifications = notifications;
 
   final ILocationService _locationService;
   final ILiveTrackingRemote _remote;
   final TbLogger _log;
   final ILiveTrackingStore _store;
   final IEntityNameResolver _nameResolver;
+  final ILiveTrackingNotifications _notifications;
   final BackgroundTrackingConfig backgroundConfig;
 
   final _sessionController = StreamController<LiveTrackingSession?>.broadcast();
@@ -127,6 +132,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _cancelSubscription();
     final current = _session;
     if (current != null) {
+      await _notifications.clear();
       await _writeTrackingStatus(active: false);
       await _updateRecordOnEnd(current, reason);
       _setSession(null);
@@ -149,7 +155,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
         saveErrorCount: session.saveErrorCount,
         lastLat: session.lastFix?.latitude,
         lastLng: session.lastFix?.longitude,
-        lastError: session.lastError,
+        lastError: session.lastError?.name,
         endReason: reason,
       ),
     );
@@ -163,6 +169,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     }
     _cancelSubscription();
     _setSession(current.copyWith(status: LiveTrackingStatus.paused));
+    await _notifications.showPaused(targetName: current.config.targetName);
     await _writeTrackingStatus(active: false);
   }
 
@@ -175,6 +182,7 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     _setSession(
       current.copyWith(status: LiveTrackingStatus.tracking, lastError: null),
     );
+    await _notifications.clear();
     await _writeTrackingStatus(active: true, includeTrackedBy: true);
     _subscribe(current.config);
   }
@@ -202,18 +210,28 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
     }
     switch (fix) {
       case LocationSuccess(:final position):
+        // A successful fix means the previously reported problem is over;
+        // a still-failing save below re-raises its own error.
         _setSession(
-          current.copyWith(fixCount: current.fixCount + 1, lastFix: position),
+          current.copyWith(
+            fixCount: current.fixCount + 1,
+            lastFix: position,
+            lastError: null,
+          ),
         );
         await _saveFix(current.config, position);
       case LocationServicesDisabled():
-        await _pauseWithError('Location services are disabled.');
+        await _pauseWithError(LiveTrackingError.locationServicesDisabled);
       case LocationPermissionDenied():
-        await _pauseWithError('Location permission denied.');
+        await _pauseWithError(LiveTrackingError.locationPermissionDenied);
       case LocationPermissionDeniedForever():
-        await _pauseWithError('Location permission permanently denied.');
-      case LocationFixError(:final message):
-        _setSession(_session?.copyWith(lastError: message));
+        await _pauseWithError(
+          LiveTrackingError.locationPermissionDeniedForever,
+        );
+      case LocationFixError():
+        _setSession(
+          _session?.copyWith(lastError: LiveTrackingError.locationError),
+        );
     }
   }
 
@@ -239,22 +257,23 @@ class LiveLocationTrackingService implements ILiveLocationTrackingService {
         _setSession(
           current.copyWith(
             saveErrorCount: current.saveErrorCount + 1,
-            lastError: e.toString(),
+            lastError: LiveTrackingError.fromSaveException(e),
           ),
         );
       }
     }
   }
 
-  Future<void> _pauseWithError(String message) async {
+  Future<void> _pauseWithError(LiveTrackingError error) async {
     final current = _session;
     if (current == null) {
       return;
     }
     _cancelSubscription();
     _setSession(
-      current.copyWith(status: LiveTrackingStatus.paused, lastError: message),
+      current.copyWith(status: LiveTrackingStatus.paused, lastError: error),
     );
+    await _notifications.showPaused(targetName: current.config.targetName);
     await _writeTrackingStatus(active: false);
   }
 

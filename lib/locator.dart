@@ -17,9 +17,11 @@ import 'package:thingsboard_app/utils/services/layouts/layout_service.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/entity_name_resolver.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_location_tracking_service.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_notifications.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_remote.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_location_tracking_service.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/live_tracking_notifications.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_tracking_remote.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_tracking_store.dart';
 import 'package:thingsboard_app/utils/services/loading_service/i_loading_service.dart';
@@ -80,6 +82,9 @@ Future<void> setUpRootDependencies() async {
     ..registerLazySingleton<IEntityNameResolver>(
       () => EntityNameResolver(clientService: getIt(), logger: getIt()),
     )
+    ..registerLazySingleton<ILiveTrackingNotifications>(
+      () => LiveTrackingNotifications(logger: getIt()),
+    )
     ..registerLazySingleton<ILiveLocationTrackingService>(
       () => LiveLocationTrackingService(
         locationService: getIt(),
@@ -87,6 +92,7 @@ Future<void> setUpRootDependencies() async {
         logger: getIt(),
         store: getIt(),
         nameResolver: getIt(),
+        notifications: getIt(),
       ),
     )
     // ..registerLazySingleton(() => TbContext())

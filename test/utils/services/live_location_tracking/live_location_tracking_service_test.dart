@@ -4,11 +4,13 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_notifications.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_remote.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_live_tracking_store.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/live_location_tracking_service.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/last_tracking_record.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_config.dart';
+import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_error.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/model/live_tracking_session.dart';
 import 'package:thingsboard_app/utils/services/location/i_location_service.dart';
 import 'package:thingsboard_app/utils/services/location/model/geo_position.dart';
@@ -72,6 +74,24 @@ class FakeNameResolver implements IEntityNameResolver {
       return pending.future;
     }
     return Future.value(name);
+  }
+}
+
+class FakeNotifications implements ILiveTrackingNotifications {
+  final shownTargetNames = <String?>[];
+  int clearCount = 0;
+  bool pausedShown = false;
+
+  @override
+  Future<void> showPaused({String? targetName}) async {
+    shownTargetNames.add(targetName);
+    pausedShown = true;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCount++;
+    pausedShown = false;
   }
 }
 
@@ -147,17 +167,20 @@ void main() {
     List<LiveTrackingKey>? keys,
     String? trackedBy,
     int? maxDurationSeconds,
+    String? targetName,
   }) => LiveTrackingConfig(
     target: target,
     keys: keys ?? positionKeys,
     trackedBy: trackedBy,
     maxDurationSeconds: maxDurationSeconds,
+    targetName: targetName,
   );
 
   late FakeLocationService location;
   late FakeRemote remote;
   late FakeStore store;
   late FakeNameResolver nameResolver;
+  late FakeNotifications notifications;
   late LiveLocationTrackingService service;
 
   setUp(() {
@@ -165,12 +188,14 @@ void main() {
     remote = FakeRemote();
     store = FakeStore();
     nameResolver = FakeNameResolver();
+    notifications = FakeNotifications();
     service = LiveLocationTrackingService(
       locationService: location,
       remote: remote,
       logger: TbLogger(),
       store: store,
       nameResolver: nameResolver,
+      notifications: notifications,
     );
   });
 
@@ -283,8 +308,53 @@ void main() {
     expect(service.session?.status, LiveTrackingStatus.tracking);
     expect(service.session?.saveErrorCount, 1);
     expect(service.session?.savedCount, 0);
-    expect(service.session?.lastError, contains('boom'));
+    expect(service.session?.lastError, LiveTrackingError.saveFailed);
   });
+
+  test('a successful fix clears the previous error', () async {
+    await service.start(
+      configOf(
+        keys: [
+          _key(
+            LiveTrackingKeyType.latitude,
+            'latitude',
+            LiveTrackingValueType.timeseries,
+          ),
+        ],
+      ),
+    );
+    remote.throwOnTelemetry = Exception('boom');
+    location.controller!.add(LocationSuccess(fix));
+    await pumpEventQueue();
+    expect(service.session?.lastError, LiveTrackingError.saveFailed);
+
+    remote.throwOnTelemetry = null;
+    location.controller!.add(LocationSuccess(fix));
+    await pumpEventQueue();
+
+    expect(service.session?.lastError, isNull);
+    expect(service.session?.savedCount, 1);
+    expect(service.session?.saveErrorCount, 1);
+  });
+
+  test(
+    'services disabled mid-session pauses and writes gpsActive=false',
+    () async {
+      await service.start(configOf(keys: [...positionKeys, ...statusKeys]));
+      remote.attributeCalls.clear();
+
+      location.controller!.add(const LocationServicesDisabled());
+      await pumpEventQueue();
+
+      expect(service.session?.status, LiveTrackingStatus.paused);
+      expect(
+        service.session?.lastError,
+        LiveTrackingError.locationServicesDisabled,
+      );
+      expect(remote.attributeCalls.single.$2, {'gpsActive': false});
+      expect(notifications.pausedShown, true);
+    },
+  );
 
   test(
     'pause cancels the stream and writes gpsActive=false; resume restores',
@@ -330,8 +400,30 @@ void main() {
 
       expect(service.session?.status, LiveTrackingStatus.paused);
       expect(service.session?.lastError, isNotNull);
+      expect(notifications.pausedShown, true);
     },
   );
+
+  test('pause shows the paused notification with the config target name '
+      'and resume clears it', () async {
+    await service.start(configOf(targetName: 'Car 42'));
+
+    await service.pause();
+    expect(notifications.pausedShown, true);
+    expect(notifications.shownTargetNames.single, 'Car 42');
+
+    await service.resume();
+    expect(notifications.pausedShown, false);
+  });
+
+  test('stop while paused clears the paused notification', () async {
+    await service.start(configOf());
+    await service.pause();
+    expect(notifications.pausedShown, true);
+
+    await service.stop();
+    expect(notifications.pausedShown, false);
+  });
 
   test('maxDurationSeconds auto-stops the session', () {
     fakeAsync((async) {

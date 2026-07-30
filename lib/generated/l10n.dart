@@ -3449,6 +3449,86 @@ class S {
     );
   }
 
+  /// `Can't save to this entity — it no longer exists. Tracking continues; update the target in the dashboard action.`
+  String get liveTrackingErrorTargetNotFound {
+    return Intl.message(
+      'Can\'t save to this entity — it no longer exists. Tracking continues; update the target in the dashboard action.',
+      name: 'liveTrackingErrorTargetNotFound',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No connection to the server. These fixes weren't saved — saving resumes when you're back online.`
+  String get liveTrackingErrorNoConnection {
+    return Intl.message(
+      'No connection to the server. These fixes weren\'t saved — saving resumes when you\'re back online.',
+      name: 'liveTrackingErrorNoConnection',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Your session ended. Sign in again to keep saving location.`
+  String get liveTrackingErrorUnauthorized {
+    return Intl.message(
+      'Your session ended. Sign in again to keep saving location.',
+      name: 'liveTrackingErrorUnauthorized',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Couldn't save this fix to the server. Saving retries with the next fix.`
+  String get liveTrackingErrorSaveFailed {
+    return Intl.message(
+      'Couldn\'t save this fix to the server. Saving retries with the next fix.',
+      name: 'liveTrackingErrorSaveFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Location services are turned off on this device.`
+  String get liveTrackingErrorServicesDisabled {
+    return Intl.message(
+      'Location services are turned off on this device.',
+      name: 'liveTrackingErrorServicesDisabled',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Location permission was denied.`
+  String get liveTrackingErrorPermissionDenied {
+    return Intl.message(
+      'Location permission was denied.',
+      name: 'liveTrackingErrorPermissionDenied',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Location permission is permanently denied. Enable it in the app settings.`
+  String get liveTrackingErrorPermissionDeniedForever {
+    return Intl.message(
+      'Location permission is permanently denied. Enable it in the app settings.',
+      name: 'liveTrackingErrorPermissionDeniedForever',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Couldn't get a location fix.`
+  String get liveTrackingErrorLocation {
+    return Intl.message(
+      'Couldn\'t get a location fix.',
+      name: 'liveTrackingErrorLocation',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Live location tracking`
   String get liveTrackingMenuTitle {
     return Intl.message(
