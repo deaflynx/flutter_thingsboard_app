@@ -1,3 +1,4 @@
+import 'package:thingsboard_app/constants/app_constants.dart';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
 import 'package:thingsboard_app/utils/services/entity_query_api.dart';
 import 'package:thingsboard_app/utils/services/live_location_tracking/i_entity_name_resolver.dart';
@@ -19,7 +20,10 @@ class EntityNameResolver implements IEntityNameResolver {
       final query = EntityQueryApi.createEntityNameQuery(entityType, id);
       final response = await _clientService.client
           .getEntityQueryControllerApi()
-          .findEntityDataByQuery(entityDataQuery: query);
+          .findEntityDataByQuery(
+            entityDataQuery: query,
+            extra: ThingsboardAppConstants.backgroundRequest,
+          );
       final data = response.data?.data;
       if (data == null || data.isEmpty) {
         return null;
