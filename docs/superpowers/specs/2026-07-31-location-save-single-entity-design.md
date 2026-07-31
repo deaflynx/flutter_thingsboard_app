@@ -99,35 +99,36 @@ This one change covers all three actions, because every path now funnels through
 
 ### `mobile-action-editor.component.html`
 
-- Drop `panelHint="..."` from the `startLiveLocation` usage (`:85`).
-- Apply the new label keys (toggle `:68`, keys-table titles `:75` and `:88`).
+- Drop `panelHint="..."` from the `startLiveLocation` usage (`:85`). Nothing else changes here — the toggle (`:68`) and both keys-table titles (`:75`, `:88`) keep their current keys and text.
 
 ### `save-browser-location-action-editor.component.html`
 
-- Apply the new keys-table title key (`:21`).
+- No changes. Its keys-table title (`:21`) is unaffected, and it never passed `panelHint`.
 
 ## Labels
 
-**Note on justification.** Once saving is single-entity, *"to entity"* is no longer factually wrong — it becomes accurate. These renames are therefore a **clarity** change, not a correctness fix. The genuine defect is the duplication: the panel title and the source row label are the *same* i18n key, `widget-action.mobile.target-entity-type`, rendered at `location-target-entity.component.html:21`/`:23` and again at `:36-37`. That must be split regardless.
+**Scope: duplication only.** Once saving is single-entity, *"to entity"* is no longer factually wrong — it becomes accurate. So the wordiness-driven renames are dropped: **`save-to-entity` ("Save location to entity") and `location.saved-keys` ("Keys that are saved to entity") stay exactly as they are.**
+
+What remains is the one genuine defect: the panel title and the source row label are the *same* i18n key, `widget-action.mobile.target-entity-type`, rendered at `location-target-entity.component.html:21`/`:23` and again at `:36-37`. Splitting it needs two distinct strings, so both sides of the split are in scope. The `CURRENT_ENTITY` option rename stays in too — `"Current datasource"` names a datasource when the value is an entity, which is a separate accuracy problem from the duplication.
 
 | Element | Key | Now | New |
 |---|---|---|---|
-| Save toggle (`getLocation`) | `widget-action.mobile.save-to-entity` | Save location to entity | **Save location** |
+| Save toggle (`getLocation`) | `widget-action.mobile.save-to-entity` | Save location to entity | *unchanged* |
 | Panel title | *new:* `widget-action.mobile.target-panel-title` | — | **Target** |
 | Source row label | `target-entity-type` → *rename to* `target-save-to` | Target entity | **Save to** |
 | Source dropdown option | `widget-action.mobile.target-current-entity` | Current datasource | **Current entity** |
-| Keys table title | `widget-action.location.saved-keys` | Keys that are saved to entity | **Keys to save** |
+| Keys table title | `widget-action.location.saved-keys` | Keys that are saved to entity | *unchanged* |
 
 Renaming the key `target-entity-type` → `target-save-to` is a two-line change (the key is referenced only in that one template, never in `location.models.ts`) and avoids leaving a key named `-entity-type` holding the text "Save to".
 
 Resulting panel for *Get phone location*:
 
 ```
-Save location  ⏺
+Save location to entity  ⏺
   Target                    [ Entity | From attribute ]
   Save to                   [ Current entity        ▾ ]
   Alias name                [ … ]        ← warning here when alias is set-valued
-  ┌ Keys to save ──────────────────────┐
+  ┌ Keys that are saved to entity ─────┐
   │ Argument │ Data key │ Type         │
 ```
 
@@ -156,7 +157,7 @@ Two rejected alternatives:
 
 **Rename:** `widget-action.mobile.target-entity-type` → `widget-action.mobile.target-save-to`, new value *"Save to"*. Its three template references (`location-target-entity.component.html:21`, `:23`, `:37`) collapse to one: `:21`/`:23` are the two `panelHint` branches that this design merges into a single unconditional title using the new `target-panel-title` key, leaving `:37` as the only `target-save-to` use.
 
-**Change in place:** `widget-action.mobile.save-to-entity` → *"Save location"*; `widget-action.mobile.target-current-entity` → *"Current entity"*; `widget-action.location.saved-keys` → *"Keys to save"*.
+**Change in place:** `widget-action.mobile.target-current-entity` → *"Current entity"*. `save-to-entity` and `location.saved-keys` are deliberately left alone (see Labels).
 
 **Remove:**
 
@@ -196,7 +197,7 @@ For `startLiveLocation` the resolution error surfaces before the bridge call, so
 5. Alias with `resolveMultiple: true` resolving to **many** → warning in editor; at click time an error toast naming the alias and the count; **no writes land on any entity**.
 6. `From attribute` with a set-valued alias as the attribute source → same warning, same runtime error.
 
-**Editor:** panel title and source row read differently ("Target" / "Save to"); no live-tracking tooltip on the panel title for `startLiveLocation`; keys table titled "Keys to save" in all three editors.
+**Editor:** panel title and source row read differently ("Target" / "Save to") in all three editors; no live-tracking tooltip on the panel title for `startLiveLocation`.
 
 **Regression:** an action configured before this change (target + keys already stored) still loads and saves — the stored `MobileActionTargetEntityConfig` shape is untouched.
 
