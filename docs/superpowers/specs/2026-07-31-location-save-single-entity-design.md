@@ -109,14 +109,14 @@ This one change covers all three actions, because every path now funnels through
 
 **Scope: duplication only.** Once saving is single-entity, *"to entity"* is no longer factually wrong — it becomes accurate. So the wordiness-driven renames are dropped: **`save-to-entity` ("Save location to entity") and `location.saved-keys` ("Keys that are saved to entity") stay exactly as they are.**
 
-What remains is the one genuine defect: the panel title and the source row label are the *same* i18n key, `widget-action.mobile.target-entity-type`, rendered at `location-target-entity.component.html:21`/`:23` and again at `:36-37`. Splitting it needs two distinct strings, so both sides of the split are in scope. **Nothing else changes** — the `CURRENT_ENTITY` option keeps its existing `"Current datasource"` label (see below).
+The genuine defect is the duplication: the panel title and the source row label are the *same* i18n key, `widget-action.mobile.target-entity-type`, rendered at `location-target-entity.component.html:21`/`:23` and again at `:36-37`. Splitting it needs two distinct strings, so both sides of the split are in scope. The `CURRENT_ENTITY` dropdown option is also renamed, for accuracy rather than brevity (see below).
 
 | Element | Key | Now | New |
 |---|---|---|---|
 | Save toggle (`getLocation`) | `widget-action.mobile.save-to-entity` | Save location to entity | *unchanged* |
 | Panel title | *new:* `widget-action.mobile.target-panel-title` | — | **Target** |
 | Source row label | `target-entity-type` → *rename to* `target-save-to` | Target entity | **Save to** |
-| Source dropdown option | `widget-action.mobile.target-current-entity` | Current datasource | *unchanged* |
+| Source dropdown option | `widget-action.mobile.target-current-entity` | Current datasource | **Entity from widget datasource** |
 | Keys table title | `widget-action.location.saved-keys` | Keys that are saved to entity | *unchanged* |
 
 Renaming the key `target-entity-type` → `target-save-to` is a two-line change (the key is referenced only in that one template, never in `location.models.ts`) and avoids leaving a key named `-entity-type` holding the text "Save to".
@@ -126,7 +126,7 @@ Resulting panel for *Get phone location*:
 ```
 Save location to entity  ⏺
   Target                    [ Entity | From attribute ]
-  Save to                   [ Current datasource    ▾ ]
+  Save to                   [ Entity from widget datasource ▾ ]
   Alias name                [ … ]        ← warning here when alias is set-valued
   ┌ Keys that are saved to entity ─────┐
   │ Argument │ Data key │ Type         │
@@ -134,15 +134,22 @@ Save location to entity  ⏺
 
 In *From attribute* mode the row label continues to switch to `target-attribute-source` ("Read attribute from"), unchanged.
 
-### `CURRENT_ENTITY` keeps "Current datasource"
+### Why "Entity from widget datasource" for `CURRENT_ENTITY`
 
-Decided to leave this label alone. For the record, what the option actually resolves to: `widgetContext.activeEntityInfo`, falling back to the first entity of the widget's own datasource subscription (`widget.component.ts:1793`) — i.e. **the entity the action fired on**: the clicked table row or map marker, else the widget's first datasource entity.
+`"Current datasource"` had two problems: `"current"` never said *whose* datasource on a dashboard full of widgets, and it named a *datasource* when the value is an *entity* — a datasource is a query that yields entities, not an entity itself.
+
+The new label is accurate on every dispatch path, all of which take the entity from the widget's own datasource data:
+
+- **Row-level actions** pass the clicked row's own `entity.id` straight into `handleWidgetAction` as `entityId` (`entities-table-widget.component.ts:804-808`, plus the timeseries-table cell and flot data-point equivalents), which becomes `currentEntityId` in the resolver.
+- **Widget-level actions** (header action, widget click) go through `getActiveEntityInfo()` (`widget.component.ts:1793`), which reads `widgetContext.activeEntityInfo` — assigned in exactly one place in the tree, `timeseries-table-widget.component.ts:645`, from `this.sources[this.sourceIndex].datasource`, i.e. the currently selected datasource tab — and otherwise falls back to `subscription.getFirstEntityInfo()`.
+
+It also parallels the naming of the existing `stateEntity` alias filter, `"Entity from dashboard state"`.
 
 Alternatives considered and rejected:
 
 - **"Entity from dashboard state"** — already taken, by an unrelated mechanism: `alias.filter-type-state-entity` (*"Entity taken from dashboard state parameters"*, `AliasFilterType.stateEntity`). `CURRENT_ENTITY` never reads state params.
-- **"Entity from widget datasource"** — sounds precise but is wrong whenever `activeEntityInfo` is set: clicking a table row yields that row's entity, not the datasource's first.
-- **"Current entity"** — matches `calculated-fields.argument-current` and the existing *"Widget action has no current entity"* error, but was not adopted; `"Current datasource"` stays as the established label for this dropdown.
+- **"Current entity"** — matches `calculated-fields.argument-current` and the existing *"Widget action has no current entity"* error string, but keeps the vague `"current"` qualifier.
+- **"Widget datasource"** — shorter and accurate about *whose* datasource, but still names a datasource when the value is an entity.
 
 ## Localization
 
@@ -156,7 +163,7 @@ Alternatives considered and rejected:
 
 **Rename:** `widget-action.mobile.target-entity-type` → `widget-action.mobile.target-save-to`, new value *"Save to"*. Its three template references (`location-target-entity.component.html:21`, `:23`, `:37`) collapse to one: `:21`/`:23` are the two `panelHint` branches that this design merges into a single unconditional title using the new `target-panel-title` key, leaving `:37` as the only `target-save-to` use.
 
-**Change in place:** none. `save-to-entity`, `target-current-entity` and `location.saved-keys` are all deliberately left alone (see Labels).
+**Change in place:** `widget-action.mobile.target-current-entity` → *"Entity from widget datasource"*. `save-to-entity` and `location.saved-keys` are deliberately left alone (see Labels).
 
 **Remove:**
 
@@ -189,7 +196,7 @@ For `startLiveLocation` the resolution error surfaces before the bridge call, so
 
 **Per action** — `getLocation` + *Save location*, `saveBrowserLocation`, `startLiveLocation`:
 
-1. `Current datasource` on an entity widget → saves to the widget's active/first datasource entity.
+1. `Entity from widget datasource` on an entity widget → saves to the widget's active/first datasource entity; on a table row action, to the clicked row's entity.
 2. `Current user` → saves to the user entity.
 3. Alias with `resolveMultiple: false` → saves to the one entity, no warning shown.
 4. Alias with `resolveMultiple: true` resolving to exactly **1** → **warning shown in editor, save succeeds**. This is the case that must not regress into a block.
