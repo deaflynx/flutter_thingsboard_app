@@ -89,7 +89,7 @@ This one change covers all three actions, because every path now funnels through
 
 **Simplify the browser toasts** (`:156-181`): the partial and multi branches go away, leaving `location-saved-keys` when keys were written and `location-saved` otherwise. A failed save keeps its existing error toast.
 
-`liveTrackingArgs` (`:186`) needs **no change** — it already calls `resolveTargetEntity` and therefore inherits the new error for free. Its previous silent alphabetically-first pick was the same class of defect as silent fan-out; this fixes it as a side effect.
+**`liveTrackingArgs` (`:186`)** inherits the new error for free — it already calls `resolveTargetEntity`, so its previous silent alphabetically-first pick is fixed as a side effect. But it does need a `catchError` of its own, because otherwise the error would be **invisible**. See "The `startLiveLocation` error sink" below.
 
 ### `location-target-entity.component.ts` / `.html`
 
@@ -160,6 +160,7 @@ Alternatives considered and rejected:
 - `widget-action.location.error-alias-multiple` — *"Entity alias '{{alias}}' resolves to {{count}} entities. The location can only be saved to a single entity."*
 - `widget-action.mobile.target-alias-multiple-warning` — *"This alias can resolve to multiple entities. Saving will fail unless it resolves to exactly one."*
 - `widget-action.mobile.target-panel-title` — *"Target"*
+- `widget-action.mobile.live-location-start-failed` — *"Failed to start live location tracking: {{error}}"*. A new key rather than reusing `location-save-failed` ("Failed to save location: …"), which would misdescribe a start failure.
 
 **Rename:** `widget-action.mobile.target-entity-type` → `widget-action.mobile.target-save-to`, new value *"Save to"*. Its three template references (`location-target-entity.component.html:21`, `:23`, `:37`) collapse to one: `:21`/`:23` are the two `panelHint` branches that this design merges into a single unconditional title using the new `target-panel-title` key, leaving `:37` as the only `target-save-to` use.
 
@@ -185,10 +186,19 @@ Alternatives considered and rejected:
 | `CURRENT_ENTITY` with no active entity | `error-no-current-entity` (existing) | error toast |
 | Attribute-source problems | existing `error-attribute-*` family | error toast |
 | Save request fails | `location-save-failed` (existing, per action) | error toast |
+| Any of the above while starting live tracking | `live-location-start-failed` (**new**) wrapping the cause | error toast |
 
-Wrapping is unchanged: `saveMobileActionLocation` catches into a toast and completes without emitting (`:115-119`); `saveBrowserLocation` reports through its `subscribe` error handler (`:172-180`).
+`saveMobileActionLocation` catches into a toast and completes without emitting; `saveBrowserLocation` reports through its `subscribe` error handler. Both are unchanged.
 
-For `startLiveLocation` the resolution error surfaces before the bridge call, so no session starts — which is the correct outcome and matches how other `liveTrackingArgs` failures already behave.
+### The `startLiveLocation` error sink
+
+`startLiveLocation` is the only action that resolves its target **during** bridge-args building rather than after, and that phase's error sink discards everything. An uncaught error propagates to the `error` callback of `argsObservable.subscribe(...)` (`widget.component.ts:1496`), which wraps it as `` `Failed to get mobile action arguments: ${err.message}` `` and hands it to `handleWidgetMobileActionError` (`:1509`) — a method whose entire body is one `if (isNotEmptyTbFunction(mobileAction.handleErrorFunction))` with no `else`. With no custom *Handle error* function configured on the action, the message is **dropped**: no toast, no `console.error`, no session. The button appears dead.
+
+That silence predates this design — it already swallows `error-alias-not-found`, `error-alias-not-resolved`, `error-no-current-entity` and the whole `error-attribute-*` family for live tracking. But making over-resolution a hard error adds a failure mode that is easy to hit by accident, which would convert the old *silently wrong* behaviour (tracking the alphabetically first entity) into *silently nothing* — strictly worse for the user, and the opposite of this design's goal.
+
+The config-time warning does not cover it: that shows to whoever edits the dashboard, while the person tapping the button in the mobile app is often someone else.
+
+**Fix:** give `liveTrackingArgs` the same treatment the other two savers already have — a trailing `catchError` that shows `live-location-start-failed` via `ctx.showErrorToast` and returns `EMPTY`, so the observable completes without emitting, `next` never fires, and no bridge call is made. All three actions then surface one clean localized toast, and the four pre-existing silent conditions are closed as a side effect.
 
 ## Testing
 
