@@ -25,6 +25,16 @@ class TbClientService implements ITbClientService {
   // generated client library can't be modified to ignore them (PROD-8200).
   bool _suppressErrorNotifications = false;
 
+  // The client delivers error callbacks via Future(() => cb(error)), so an
+  // error raised during init() reaches onClientError one event-loop turn
+  // AFTER init() returns. Keep suppressing for a grace period instead of
+  // lifting the flag synchronously.
+  void _scheduleErrorNotificationsRestore() {
+    Future.delayed(const Duration(seconds: 2), () {
+      _suppressErrorNotifications = false;
+    });
+  }
+
   ThingsboardClient _createClient(
     String endpoint, {
     required ErrorCallback onError,
@@ -54,7 +64,7 @@ class TbClientService implements ITbClientService {
       log('Failed to init tbClient: $e');
       onInitError(e);
     } finally {
-      _suppressErrorNotifications = false;
+      _scheduleErrorNotificationsRestore();
     }
   }
 
@@ -132,7 +142,7 @@ class TbClientService implements ITbClientService {
       _suppressErrorNotifications = true;
       await _client.init();
     } finally {
-      _suppressErrorNotifications = false;
+      _scheduleErrorNotificationsRestore();
     }
     onDone();
   }
