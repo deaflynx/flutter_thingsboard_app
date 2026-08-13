@@ -96,6 +96,28 @@ class NoauthProvider extends _$NoauthProvider {
         );
       }
 
+      // The server can hand out an already-revoked pair: the pair is bound
+      // to the QR secret, so re-scanning the same code after a logout yields
+      // tokens issued before the logout watermark ('Token is outdated').
+      // Verify the pair against the target host BEFORE switching, otherwise
+      // the new client would enter a login/refresh loop it can never win.
+      try {
+        await tempDio.get(
+          '/api/auth/user',
+          options: Options(headers: {'X-Authorization': 'Bearer $tokenStr'}),
+        );
+      } on DioException catch (e) {
+        final body = e.response?.data;
+        final serverMessage = body is Map ? body['message'] as String? : null;
+        throw ThingsboardError(
+          message:
+              serverMessage ??
+              'The QR code session is no longer valid. '
+                  'Please refresh the QR code and scan again.',
+          status: e.response?.statusCode,
+        );
+      }
+
       if (isTheSameHost) {
         state = NoAuthState(
           error: null,
