@@ -19,6 +19,12 @@ class TbClientService implements ITbClientService {
   ThingsboardClient get client => _client;
   final IOverlayService _overlayService = getIt();
 
+  // The client performs best-effort internal calls during init() (e.g. the
+  // server version check hits /api/admin/updates, which answers 403 for
+  // non-SYS_ADMIN users). Those must not surface as error toasts, and the
+  // generated client library can't be modified to ignore them (PROD-8200).
+  bool _suppressErrorNotifications = false;
+
   ThingsboardClient _createClient(
     String endpoint, {
     required ErrorCallback onError,
@@ -42,10 +48,13 @@ class TbClientService implements ITbClientService {
     _client = _createClient(endpoint, onError: onClientError);
 
     try {
+      _suppressErrorNotifications = true;
       await _client.init();
     } catch (e) {
       log('Failed to init tbClient: $e');
       onInitError(e);
+    } finally {
+      _suppressErrorNotifications = false;
     }
   }
 
@@ -76,6 +85,9 @@ class TbClientService implements ITbClientService {
 
   void onClientError(ThingsboardError e) {
     log('client on error: $e');
+    if (_suppressErrorNotifications) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Utils.isConnectionError(e)) {
         _overlayService.showAlertDialog(
@@ -116,7 +128,12 @@ class TbClientService implements ITbClientService {
         onClientError(e);
       },
     );
-    await _client.init();
+    try {
+      _suppressErrorNotifications = true;
+      await _client.init();
+    } finally {
+      _suppressErrorNotifications = false;
+    }
     onDone();
   }
 }

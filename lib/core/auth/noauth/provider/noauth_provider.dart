@@ -137,6 +137,18 @@ class NoauthProvider extends _$NoauthProvider {
           _logger.error('SwitchEndpointUseCase:onAuthError $e');
         },
       );
+      if (!getIt<ITbClientService>().client.isAuthenticated()) {
+        // The staged tokens were lost before init picked them up (e.g. a
+        // failing background refresh of the previous session cleared the
+        // shared storage in the meantime): apply the exchanged pair to the
+        // new client directly.
+        _logger.debug('SwitchEndpointUseCase: re-applying exchanged tokens');
+        await getIt<ITbClientService>().client.setUserFromJwtToken(
+          tokenStr,
+          refreshTokenStr,
+          true,
+        );
+      }
       _logger.debug('SwitchEndpointUseCase: switch to $host done');
       state = NoAuthState(error: null, isDone: true, message: '');
     } catch (e) {
