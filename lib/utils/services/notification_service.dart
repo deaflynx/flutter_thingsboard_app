@@ -18,7 +18,10 @@ class NotificationService {
   static FirebaseMessaging _messaging = FirebaseMessaging.instance;
   late NotificationDetails _notificationDetails;
   final TbLogger _log = getIt();
-  final ThingsboardClient _tbClient = getIt<ITbClientService>().client;
+  // Read the live client on every access: a QR-code endpoint switch re-creates
+  // the client (ITbClientService.reInit), so a reference captured at
+  // construction would keep pointing at the old host (PROD-8200).
+  ThingsboardClient get _tbClient => getIt<ITbClientService>().client;
   final INotificationsLocalService _localService = NotificationsLocalService();
   StreamSubscription? _foregroundMessageSubscription;
   StreamSubscription? _onMessageOpenedAppSubscription;

@@ -108,7 +108,7 @@ class TbClientService implements ITbClientService {
     required VoidCallback onDone,
     required ErrorCallback onAuthError,
   }) async {
-    log('TbClient:reinit()');
+    log('TbClient:reinit() endpoint: $endpoint');
     _client = _createClient(
       endpoint,
       onError: (e) {
