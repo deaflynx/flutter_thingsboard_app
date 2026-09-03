@@ -166,5 +166,10 @@ extension ActionTypeTranslationUtils on ActionType {
   }
 }
 
+extension ThingsboardErrorTranslation on ThingsboardError {
+  String translatedMessage(BuildContext context) =>
+      message ?? S.of(context).unknownError;
+}
+
 typedef TranslationBuilder = String Function(BuildContext context);
 typedef TranslatedDialogBuilder = DialogContent Function(BuildContext context);

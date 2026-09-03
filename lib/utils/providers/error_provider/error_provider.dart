@@ -6,6 +6,7 @@ import 'package:thingsboard_app/generated/l10n.dart';
 import 'package:thingsboard_app/locator.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
 import 'package:thingsboard_app/utils/services/overlay_service/i_overlay_service.dart';
+import 'package:thingsboard_app/utils/translation_utils.dart';
 part 'error_provider.g.dart';
 
 @riverpod
@@ -19,17 +20,18 @@ class Error extends _$Error {
 
   void onError(ThingsboardError tbError) {
     _log.error('onError', tbError, tbError.getStackTrace());
-    _overlayService.showErrorNotification((_) => tbError.message!);
+    _overlayService.showErrorNotification(tbError.translatedMessage);
   }
 
   String _getMessage(dynamic e, BuildContext context) {
     final message =
         e is ThingsboardError
-            ? (e.message ?? S.of(context).unknownError)
+            ? e.translatedMessage(context)
             : S.of(context).unknownError;
 
     return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
   }
+
   Future<void> onFatalError(dynamic e) async {
     await _overlayService.showAlertDialog(
       content:

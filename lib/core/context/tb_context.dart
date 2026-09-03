@@ -18,6 +18,7 @@ import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart'
 import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart';
 import 'package:thingsboard_app/utils/services/notification_service.dart';
 import 'package:thingsboard_app/utils/services/overlay_service/i_overlay_service.dart';
+import 'package:thingsboard_app/utils/translation_utils.dart';
 import 'package:thingsboard_app/utils/utils.dart';
 import 'package:universal_platform/universal_platform.dart';
 
@@ -120,7 +121,7 @@ class TbContext implements PopEntry {
     String getMessage(dynamic e, BuildContext context) {
       final message =
           e is ThingsboardError
-              ? (e.message ?? S.of(context).unknownError)
+              ? e.translatedMessage(context)
               : S.of(context).unknownError;
 
       return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
@@ -139,7 +140,7 @@ class TbContext implements PopEntry {
 
   void onError(ThingsboardError tbError) {
     log.error('onError', tbError, tbError.getStackTrace());
-    _overlayService.showErrorNotification((_) => tbError.message!);
+    _overlayService.showErrorNotification(tbError.translatedMessage);
   }
 
   void onLoadStarted() {

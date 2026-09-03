@@ -10,6 +10,7 @@ import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart'
 import 'package:thingsboard_app/utils/services/loading_service/i_loading_service.dart';
 import 'package:thingsboard_app/utils/services/overlay_service/i_overlay_service.dart';
 import 'package:thingsboard_app/utils/services/tb_client_service/i_tb_client_service.dart';
+import 'package:thingsboard_app/utils/translation_utils.dart';
 import 'package:thingsboard_app/utils/utils.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
 
@@ -57,7 +58,7 @@ class TbClientService implements ITbClientService {
   String _getMessage(dynamic e, BuildContext context) {
     final message =
         e is ThingsboardError
-            ? (e.message ?? S.of(context).unknownError)
+            ? e.translatedMessage(context)
             : S.of(context).unknownError;
 
     return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
@@ -88,9 +89,7 @@ class TbClientService implements ITbClientService {
 
         return;
       }
-      _overlayService.showErrorNotification(
-        (context) => e.message ?? S.of(context).unknownError,
-      );
+      _overlayService.showErrorNotification(e.translatedMessage);
     });
   }
 
