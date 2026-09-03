@@ -171,5 +171,14 @@ extension ThingsboardErrorTranslation on ThingsboardError {
       message ?? S.of(context).unknownError;
 }
 
+String translatedFatalErrorMessage(BuildContext context, Object? error) {
+  final message =
+      error is ThingsboardError
+          ? error.translatedMessage(context)
+          : S.of(context).unknownError;
+
+  return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
+}
+
 typedef TranslationBuilder = String Function(BuildContext context);
 typedef TranslatedDialogBuilder = DialogContent Function(BuildContext context);

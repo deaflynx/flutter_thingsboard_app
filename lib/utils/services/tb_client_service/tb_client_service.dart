@@ -55,21 +55,12 @@ class TbClientService implements ITbClientService {
     getIt<ICommunicationService>().fire(const UserLoadedEvent());
   }
 
-  String _getMessage(dynamic e, BuildContext context) {
-    final message =
-        e is ThingsboardError
-            ? e.translatedMessage(context)
-            : S.of(context).unknownError;
-
-    return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
-  }
-
   void onInitError(dynamic e) {
     _overlayService.showAlertDialog(
       content:
           (context) => DialogContent(
             title: S.of(context).fatalError,
-            message: _getMessage(e, context),
+            message: translatedFatalErrorMessage(context, e),
             ok: S.of(context).cancel,
           ),
     );

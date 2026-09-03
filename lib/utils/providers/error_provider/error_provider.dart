@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:thingsboard_app/core/auth/login/provider/login_provider.dart';
 import 'package:thingsboard_app/core/logger/tb_logger.dart';
@@ -23,21 +22,12 @@ class Error extends _$Error {
     _overlayService.showErrorNotification(tbError.translatedMessage);
   }
 
-  String _getMessage(dynamic e, BuildContext context) {
-    final message =
-        e is ThingsboardError
-            ? e.translatedMessage(context)
-            : S.of(context).unknownError;
-
-    return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
-  }
-
   Future<void> onFatalError(dynamic e) async {
     await _overlayService.showAlertDialog(
       content:
           (context) => DialogContent(
             title: S.of(context).fatalError,
-            message: _getMessage(e, context),
+            message: translatedFatalErrorMessage(context, e),
             ok: S.of(context).cancel,
           ),
     );

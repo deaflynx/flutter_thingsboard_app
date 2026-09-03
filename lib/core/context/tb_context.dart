@@ -118,20 +118,11 @@ class TbContext implements PopEntry {
   }
 
   Future<void> onFatalError(dynamic e) async {
-    String getMessage(dynamic e, BuildContext context) {
-      final message =
-          e is ThingsboardError
-              ? e.translatedMessage(context)
-              : S.of(context).unknownError;
-
-      return '${S.of(context).fatalApplicationErrorOccurred}\n$message';
-    }
-
     await _overlayService.showAlertDialog(
       content:
           (context) => DialogContent(
             title: S.of(context).fatalError,
-            message: getMessage(e, context),
+            message: translatedFatalErrorMessage(context, e),
             ok: S.of(context).cancel,
           ),
     );
