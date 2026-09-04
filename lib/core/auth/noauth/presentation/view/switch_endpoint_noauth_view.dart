@@ -52,7 +52,7 @@ class SwitchEndpointNoAuthView extends HookConsumerWidget {
     });
 
     ref.listen(noauthProviderProvider, (prev, next) {
-      if (next.error != null) {
+      if (next.failure != null) {
         userLoadTimer.value?.cancel();
         errorExitTimer.value?.cancel();
         errorExitTimer.value = Timer(
@@ -96,7 +96,7 @@ class SwitchEndpointNoAuthView extends HookConsumerWidget {
       body: SafeArea(
         child: Builder(
           builder: (context) {
-            if (noAuth.error != null) {
+            if (noAuth.failure != null) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Center(
@@ -180,9 +180,6 @@ class SwitchEndpointNoAuthView extends HookConsumerWidget {
 
   String _errorMessage(BuildContext context, NoAuthState state) {
     final serverMessage = state.serverMessage;
-    if (serverMessage != null && serverMessage.isNotEmpty) {
-      return serverMessage;
-    }
 
     return switch (state.failure) {
       NoAuthFailure.tokenExchangeFailed => S
@@ -190,7 +187,12 @@ class SwitchEndpointNoAuthView extends HookConsumerWidget {
           .failedToObtainLoginTokenFromHost(state.host ?? ''),
       NoAuthFailure.sessionInvalid =>
         S.of(context).qrCodeSessionIsNoLongerValid,
-      NoAuthFailure.unknown || null => S.of(context).somethingWentWrong,
+      // Server messages are hardcoded English (and "Token has expired" for a
+      // revoked pair): the last resort, not the first choice.
+      NoAuthFailure.unknown || null =>
+        (serverMessage != null && serverMessage.isNotEmpty)
+            ? serverMessage
+            : S.of(context).somethingWentWrong,
     };
   }
 }

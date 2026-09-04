@@ -13,10 +13,11 @@ import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart'
 import 'package:thingsboard_app/utils/services/tb_client_service/i_tb_client_service.dart';
 part 'noauth_provider.g.dart';
 
-/// Storage keys `ThingsboardClient.init()` reads to restore a session
-/// (see `thingsboard_client_base.dart` of the client pinned in pubspec.yaml).
-/// The QR switch writes them directly to hand the freshly created client
-/// exactly the exchanged pair, so they must be kept in sync with the client.
+/// Storage keys `ThingsboardClient.init()` reads to restore a session (see
+/// `thingsboard_client_base.dart` in `../thingsboard-dart-client/ce`, a path
+/// dependency with no version pin to check against). The QR switch writes them
+/// directly to hand the freshly created client exactly the exchanged pair, so
+/// they must be kept in sync with the client.
 const _jwtTokenStorageKey = 'jwt_token';
 const _refreshTokenStorageKey = 'refresh_token';
 
@@ -32,7 +33,8 @@ final class SwitchEndpointParams {
 /// copy: the provider has no BuildContext.
 enum NoAuthStep { fetchingSession, loggingIn, switchingHost }
 
-/// What went wrong, for the cases where the server did not supply a message.
+/// What went wrong. The view resolves it to localized copy and falls back to
+/// the server's message only for [unknown].
 enum NoAuthFailure { tokenExchangeFailed, sessionInvalid, unknown }
 
 final class SwitchEndpointFailure implements Exception {
@@ -62,23 +64,25 @@ class NoauthProvider extends _$NoauthProvider {
   }
 
   Future<void> switchEndpoint(SwitchEndpointParams params) async {
-    final uri = params.data.uri;
     final secret = params.data.secret;
     final previousEndpoint = await getIt<IEndpointService>().getEndpoint();
-    final host =
-        params.data.host ?? (uri.isAbsolute ? uri.origin : previousEndpoint);
-    final isTheSameHost =
-        Uri.parse(host).host.compareTo(Uri.parse(previousEndpoint).host) == 0;
     // Captured before anything is written: the rollback has to restore the
     // session of the host we came from, not just its endpoint (PROD-8200).
     final previousSession = await _readStoredSession();
-
-    _logger.debug(
-      'SwitchEndpointUseCase: host=$host previousEndpoint=$previousEndpoint '
-      'isTheSameHost=$isTheSameHost hasSecret=${secret != null}',
-    );
+    // Resolved inside the try: a malformed link has to end on the error screen
+    // like any other failure instead of leaving the view on the spinner.
+    String? host;
 
     try {
+      host = _resolveHost(params.data, previousEndpoint);
+      final isTheSameHost =
+          Uri.parse(host).host == Uri.parse(previousEndpoint).host;
+
+      _logger.debug(
+        'SwitchEndpointUseCase: host=$host previousEndpoint=$previousEndpoint '
+        'isTheSameHost=$isTheSameHost hasSecret=${secret != null}',
+      );
+
       if (secret == null || secret.isEmpty) {
         // A QR link without a secret (e.g. the mobile app QR shown on the
         // login page) cannot log the user in: just switch to the target host
@@ -112,6 +116,17 @@ class NoauthProvider extends _$NoauthProvider {
       await _rollbackTo(previousEndpoint, previousSession);
       state = _failureState(e, host: host);
     }
+  }
+
+  /// Only http(s) links carry a host the app can switch to; anything else
+  /// (e.g. a custom-scheme link) targets the current endpoint. `Uri.origin`
+  /// still throws on an empty host, which the caller's catch turns into the
+  /// regular error screen.
+  String _resolveHost(SwitchEndpointArgs args, String previousEndpoint) {
+    final uri = args.uri;
+    final isHttpLink = uri.isScheme('http') || uri.isScheme('https');
+
+    return args.host ?? (isHttpLink ? uri.origin : previousEndpoint);
   }
 
   /// Exchanges the one-time QR secret for a JWT pair on the TARGET host.
@@ -168,7 +183,7 @@ class NoauthProvider extends _$NoauthProvider {
   /// with exactly these tokens instead of a session an earlier host left
   /// behind (PROD-8200).
   Future<void> _installSession(
-    _Session session, {
+    _ExchangedSession session, {
     required String host,
     required String previousEndpoint,
     required bool isTheSameHost,
@@ -319,10 +334,9 @@ class NoauthProvider extends _$NoauthProvider {
     );
   }
 
-  NoAuthState _failureState(Object error, {required String host}) {
+  NoAuthState _failureState(Object error, {required String? host}) {
     if (error is SwitchEndpointFailure) {
       return NoAuthState(
-        error: error,
         host: host,
         failure: error.failure,
         serverMessage: error.serverMessage,
@@ -330,7 +344,6 @@ class NoauthProvider extends _$NoauthProvider {
     }
 
     return NoAuthState(
-      error: error,
       host: host,
       failure: NoAuthFailure.unknown,
       // Only the message is ever handed to the UI: ThingsboardError.toString()
@@ -342,7 +355,6 @@ class NoauthProvider extends _$NoauthProvider {
 
 class NoAuthState {
   const NoAuthState({
-    this.error,
     this.isDone = false,
     this.step,
     this.host,
@@ -350,13 +362,13 @@ class NoAuthState {
     this.serverMessage,
   });
 
-  final Object? error;
   final bool isDone;
   final NoAuthStep? step;
   final String? host;
   final NoAuthFailure? failure;
 
-  /// Message returned by the server, shown as-is: it is already localized
-  /// server-side and carries detail the app cannot reconstruct.
+  /// Message returned by the server, if any. It is hardcoded English on the
+  /// server side, so the view prefers localized copy for the failures it can
+  /// classify and shows this only for [NoAuthFailure.unknown].
   final String? serverMessage;
 }

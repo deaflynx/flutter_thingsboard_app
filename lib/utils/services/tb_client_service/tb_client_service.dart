@@ -101,7 +101,9 @@ class TbClientService implements ITbClientService {
 
   void onClientError(ThingsboardError e) {
     log('client on error: $e');
-    if (_suppressErrorNotifications) {
+    // An unreachable server is never what the init-time 401/403 answers look
+    // like: keep it visible even inside the suppression window.
+    if (_suppressErrorNotifications && !Utils.isConnectionError(e)) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
