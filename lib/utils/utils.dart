@@ -299,9 +299,9 @@ abstract class Utils {
   }
 
   /// HTTP(S) links are fetched as they are. Links relative to the platform,
-  /// such as an image public link, are resolved against the active endpoint the
-  /// same way a browser resolves them against its origin. Anything else has no
-  /// meaningful target and is rendered as a missing image.
+  /// such as an image public link, are resolved against the active endpoint.
+  /// Anything else has no meaningful target and is rendered as a missing
+  /// image.
   static String? _resolveNetworkImageLink(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) {
