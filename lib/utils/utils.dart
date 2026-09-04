@@ -298,7 +298,7 @@ abstract class Utils {
     return _imagesUrlRegexp.hasMatch(url);
   }
 
-  /// Absolute links are fetched as they are. Links relative to the platform,
+  /// HTTP(S) links are fetched as they are. Links relative to the platform,
   /// such as an image public link, are resolved against the active endpoint the
   /// same way a browser resolves them against its origin. Anything else has no
   /// meaningful target and is rendered as a missing image.
