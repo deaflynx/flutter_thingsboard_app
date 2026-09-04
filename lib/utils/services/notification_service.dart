@@ -55,6 +55,8 @@ class NotificationService {
     }
     // A stale cleanup started while unauthenticated may still be deleting the
     // FCM token; registering concurrently would delete the token just saved.
+    // This relies on the service being a locator singleton: the login
+    // provider started that cleanup on this same instance.
     await _staleCleanup;
 
     _log.debug('NotificationService::init()');
@@ -159,22 +161,37 @@ class NotificationService {
   /// local FCM token makes further pushes bounce, and the platform purges
   /// the session on the next delivery attempt.
   ///
-  /// Idempotent and safe to call whenever the client is unauthenticated.
-  /// Concurrent calls share a single run, and [init] waits for it to finish.
-  Future<void> cleanUpStalePushRegistration() {
+  /// Idempotent, never throws, and safe to call whenever the client is
+  /// unauthenticated. Concurrent calls share a single run, and [init] waits
+  /// for a run that is already in flight. The reverse direction is not
+  /// ordered: a cleanup that starts while [init] is mid-flight can delete the
+  /// token [init] just registered, which only costs pushes until the next
+  /// launch registers a fresh one.
+  Future<void> cleanUpStalePushRegistration() async {
     if (!_isFirebaseConfigured) {
-      return Future.value();
+      return;
     }
-    return _staleCleanup ??= _tearDownIfRegistered().whenComplete(
+    _staleCleanup ??= _tearDownIfRegistered().whenComplete(
       () => _staleCleanup = null,
     );
+    await _staleCleanup;
   }
 
   Future<void> _tearDownIfRegistered() async {
-    if (!await _localDatabase.isPushRegistered()) {
+    final bool registered;
+    try {
+      registered = await _localDatabase.isPushRegistered();
+    } catch (e) {
+      _log.warn(
+        'NotificationService::_tearDownIfRegistered() failed to read the '
+        'registration flag: $e',
+      );
       return;
     }
-    _log.debug('NotificationService::cleanUpStalePushRegistration()');
+    if (!registered) {
+      return;
+    }
+    _log.debug('NotificationService::_tearDownIfRegistered()');
     await _tearDownLocalPushState();
   }
 

@@ -92,6 +92,21 @@ void main() {
     ),
   ).called(1);
 
+  void verifyNoSessionSaved() => verifyNever(
+    () => userApi.saveMobileSession(
+      xMobileToken: any(named: 'xMobileToken'),
+      mobileSessionInfo: any(named: 'mobileSessionInfo'),
+    ),
+  );
+
+  void verifyNoSessionRemoval() => verifyNever(
+    () => userApi.removeMobileSession(xMobileToken: any(named: 'xMobileToken')),
+  );
+
+  void stubPushRegistered() => when(
+    () => localDatabase.isPushRegistered(),
+  ).thenAnswer((_) async => true);
+
   setUp(() {
     messaging = MockFirebaseMessaging();
     localNotificationsPlugin = MockFlutterLocalNotificationsPlugin();
@@ -175,13 +190,22 @@ void main() {
       verifyNever(() => localDatabase.setPushRegistered());
     });
 
-    test('registers the device and marks push as registered when the '
-        'server has no session for the token', () async {
-      await buildService().init();
+    for (final status in [
+      AuthorizationStatus.authorized,
+      AuthorizationStatus.provisional,
+    ]) {
+      test('registers the device and marks push as registered under '
+          '$status when the server has no session for the token', () async {
+        when(
+          () => messaging.requestPermission(provisional: true),
+        ).thenAnswer((_) async => permission(status));
 
-      verifyMobileSessionSaved(fcmToken);
-      verify(() => localDatabase.setPushRegistered()).called(1);
-    });
+        await buildService().init();
+
+        verifyMobileSessionSaved(fcmToken);
+        verify(() => localDatabase.setPushRegistered()).called(1);
+      });
+    }
 
     test('marks push as registered without re-saving a fresh '
         'server-side session', () async {
@@ -189,12 +213,7 @@ void main() {
 
       await buildService().init();
 
-      verifyNever(
-        () => userApi.saveMobileSession(
-          xMobileToken: any(named: 'xMobileToken'),
-          mobileSessionInfo: any(named: 'mobileSessionInfo'),
-        ),
-      );
+      verifyNoSessionSaved();
       verify(() => localDatabase.setPushRegistered()).called(1);
     });
 
@@ -217,6 +236,21 @@ void main() {
         ),
       ]);
       verify(() => localDatabase.setPushRegistered()).called(1);
+    });
+
+    test('leaves push unregistered when the rotation cannot obtain a fresh '
+        'token', () async {
+      stubMobileSession(sessionRegistered(const Duration(days: 31)));
+      final tokens = <String?>[fcmToken, null];
+      when(
+        () => messaging.getToken(),
+      ).thenAnswer((_) async => tokens.removeAt(0));
+
+      await buildService().init();
+
+      verify(() => messaging.deleteToken()).called(1);
+      verifyNoSessionSaved();
+      verifyNever(() => localDatabase.setPushRegistered());
     });
 
     test('does not mark push as registered when no FCM token is '
@@ -246,9 +280,7 @@ void main() {
 
     test('waits for a pending stale cleanup, so the token it registers '
         'is not the one being deleted', () async {
-      when(
-        () => localDatabase.isPushRegistered(),
-      ).thenAnswer((_) async => true);
+      stubPushRegistered();
       final deleteToken = Completer<void>();
       when(() => messaging.deleteToken()).thenAnswer((_) => deleteToken.future);
       final service = buildService();
@@ -293,11 +325,7 @@ void main() {
       tokenRefreshes.add(refreshedToken);
       await pumpEventQueue();
 
-      verifyNever(
-        () => userApi.removeMobileSession(
-          xMobileToken: any(named: 'xMobileToken'),
-        ),
-      );
+      verifyNoSessionRemoval();
       verifyMobileSessionSaved(refreshedToken);
       verify(() => localDatabase.setPushRegistered()).called(1);
     });
@@ -315,6 +343,26 @@ void main() {
       await pumpEventQueue();
 
       verifyMobileSessionSaved(refreshedToken);
+    });
+
+    test('keeps listening when saving the refreshed token fails', () async {
+      when(
+        () => userApi.saveMobileSession(
+          xMobileToken: refreshedToken,
+          mobileSessionInfo: any(named: 'mobileSessionInfo'),
+        ),
+      ).thenThrow(Exception('500'));
+      await buildService().init();
+
+      tokenRefreshes.add(refreshedToken);
+      await pumpEventQueue();
+      tokenRefreshes.add('second-refreshed-token');
+      await pumpEventQueue();
+
+      verify(
+        () => userApi.removeMobileSession(xMobileToken: refreshedToken),
+      ).called(1);
+      verifyMobileSessionSaved('second-refreshed-token');
     });
   });
 
@@ -341,9 +389,7 @@ void main() {
 
     test('cleans up the local registration when the session expired '
         'after a login', () async {
-      when(
-        () => localDatabase.isPushRegistered(),
-      ).thenAnswer((_) async => true);
+      stubPushRegistered();
 
       await buildService().cleanUpStalePushRegistration();
 
@@ -352,18 +398,12 @@ void main() {
       verify(() => localNotificationsPlugin.cancelAll()).called(1);
       verify(() => localService.clearNotificationBadgeCount()).called(1);
       verify(() => localDatabase.clearPushRegistered()).called(1);
-      verifyNever(
-        () => userApi.removeMobileSession(
-          xMobileToken: any(named: 'xMobileToken'),
-        ),
-      );
+      verifyNoSessionRemoval();
     });
 
     test('keeps the registration flag when the cleanup is interrupted, '
         'so it is retried on the next launch', () async {
-      when(
-        () => localDatabase.isPushRegistered(),
-      ).thenAnswer((_) async => true);
+      stubPushRegistered();
       when(() => messaging.deleteToken()).thenThrow(Exception('no network'));
 
       await buildService().cleanUpStalePushRegistration();
@@ -372,9 +412,7 @@ void main() {
     });
 
     test('runs a single teardown for concurrent calls', () async {
-      when(
-        () => localDatabase.isPushRegistered(),
-      ).thenAnswer((_) async => true);
+      stubPushRegistered();
       final service = buildService();
 
       await Future.wait([
@@ -383,6 +421,40 @@ void main() {
       ]);
 
       verify(() => messaging.deleteToken()).called(1);
+    });
+
+    test('retries the teardown on the next call after an interrupted one '
+        'and clears the flag once it succeeds', () async {
+      stubPushRegistered();
+      var deleteAttempts = 0;
+      when(() => messaging.deleteToken()).thenAnswer((_) async {
+        if (deleteAttempts++ == 0) {
+          throw Exception('no network');
+        }
+      });
+      final service = buildService();
+
+      await service.cleanUpStalePushRegistration();
+      verifyNever(() => localDatabase.clearPushRegistered());
+
+      await service.cleanUpStalePushRegistration();
+
+      verify(() => messaging.deleteToken()).called(2);
+      verify(() => localDatabase.clearPushRegistered()).called(1);
+    });
+
+    test('completes when the registration flag cannot be read, so a later '
+        'init() still registers', () async {
+      when(
+        () => localDatabase.isPushRegistered(),
+      ).thenThrow(Exception('corrupt box'));
+      final service = buildService();
+
+      await expectLater(service.cleanUpStalePushRegistration(), completes);
+      await service.init();
+
+      verifyNever(() => messaging.deleteToken());
+      verify(() => localDatabase.setPushRegistered()).called(1);
     });
   });
 
