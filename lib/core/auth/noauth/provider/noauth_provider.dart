@@ -75,19 +75,18 @@ class NoauthProvider extends _$NoauthProvider {
 
     try {
       host = _resolveHost(params.data, previousEndpoint);
-      final isTheSameHost =
-          Uri.parse(host).host == Uri.parse(previousEndpoint).host;
+      final isSameOrigin = _isSameOrigin(host, previousEndpoint);
 
       _logger.debug(
         'SwitchEndpointUseCase: host=$host previousEndpoint=$previousEndpoint '
-        'isTheSameHost=$isTheSameHost hasSecret=${secret != null}',
+        'isSameOrigin=$isSameOrigin hasSecret=${secret != null}',
       );
 
       if (secret == null || secret.isEmpty) {
         // A QR link without a secret (e.g. the mobile app QR shown on the
         // login page) cannot log the user in: just switch to the target host
         // and let the login page of that host take over.
-        if (!isTheSameHost) {
+        if (!isSameOrigin) {
           await _switchHostOnly(host: host, previousEndpoint: previousEndpoint);
         }
         state = const NoAuthState(isDone: true);
@@ -99,14 +98,14 @@ class NoauthProvider extends _$NoauthProvider {
       await _verifySession(host: host, token: session.token);
 
       state = NoAuthState(
-        step: isTheSameHost ? NoAuthStep.loggingIn : NoAuthStep.switchingHost,
+        step: isSameOrigin ? NoAuthStep.loggingIn : NoAuthStep.switchingHost,
         host: host,
       );
       await _installSession(
         session,
         host: host,
         previousEndpoint: previousEndpoint,
-        isTheSameHost: isTheSameHost,
+        isSameOrigin: isSameOrigin,
       );
 
       _logger.debug('SwitchEndpointUseCase: switch to $host done');
@@ -128,6 +127,13 @@ class NoauthProvider extends _$NoauthProvider {
 
     return args.host ?? (isHttpLink ? uri.origin : previousEndpoint);
   }
+
+  /// Scheme and port are part of the identity: `http://acme.local:8080` and
+  /// `https://acme.local` are different servers, so a link that differs only
+  /// there still has to switch. `Uri.origin` normalizes case and default ports
+  /// (`https://Acme.local:443/` still matches `https://acme.local`).
+  bool _isSameOrigin(String endpoint, String other) =>
+      Uri.parse(endpoint).origin == Uri.parse(other).origin;
 
   /// Exchanges the one-time QR secret for a JWT pair on the TARGET host.
   ///
@@ -186,11 +192,11 @@ class NoauthProvider extends _$NoauthProvider {
     _ExchangedSession session, {
     required String host,
     required String previousEndpoint,
-    required bool isTheSameHost,
+    required bool isSameOrigin,
   }) async {
     await _writeStoredSession(session);
     await getIt<IEndpointService>().setEndpoint(host);
-    if (!isTheSameHost) {
+    if (!isSameOrigin) {
       await _switchFirebaseApps(previousEndpoint);
     }
     await _reInitClient(host, logTag: 'switch');
