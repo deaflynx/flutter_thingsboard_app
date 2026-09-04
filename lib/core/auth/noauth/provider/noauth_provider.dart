@@ -123,17 +123,31 @@ class NoauthProvider extends _$NoauthProvider {
   /// regular error screen.
   String _resolveHost(SwitchEndpointArgs args, String previousEndpoint) {
     final uri = args.uri;
-    final isHttpLink = uri.isScheme('http') || uri.isScheme('https');
 
-    return args.host ?? (isHttpLink ? uri.origin : previousEndpoint);
+    return args.host ?? (_isHttpUri(uri) ? uri.origin : previousEndpoint);
   }
 
   /// Scheme and port are part of the identity: `http://acme.local:8080` and
   /// `https://acme.local` are different servers, so a link that differs only
   /// there still has to switch. `Uri.origin` normalizes case and default ports
   /// (`https://Acme.local:443/` still matches `https://acme.local`).
-  bool _isSameOrigin(String endpoint, String other) =>
-      Uri.parse(endpoint).origin == Uri.parse(other).origin;
+  ///
+  /// Deliberately asymmetric: an unusable target throws and ends on the error
+  /// screen, while an unusable stored endpoint (empty without the dart-define,
+  /// or schemeless from an older build) is nothing to stay on, so the switch
+  /// proceeds. `EndpointService.isCustomEndpoint` keeps comparing hosts only:
+  /// Firebase is bound to the default host, not to a scheme or port.
+  bool _isSameOrigin(String host, String previousEndpoint) {
+    final target = Uri.parse(host).origin;
+    final previous = Uri.tryParse(previousEndpoint);
+    if (previous == null || !_isHttpUri(previous) || previous.host.isEmpty) {
+      return false;
+    }
+
+    return target == previous.origin;
+  }
+
+  bool _isHttpUri(Uri uri) => uri.isScheme('http') || uri.isScheme('https');
 
   /// Exchanges the one-time QR secret for a JWT pair on the TARGET host.
   ///
@@ -180,7 +194,15 @@ class NoauthProvider extends _$NoauthProvider {
         options: Options(headers: {'X-Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
-      throw _asFailure(e, NoAuthFailure.sessionInvalid);
+      // Only a 401 rejects the pair itself (the server maps JWT_TOKEN_EXPIRED
+      // to 401). A timeout or a proxy error says nothing about the QR session
+      // and must not tell the user to scan again.
+      throw _asFailure(
+        e,
+        e.response?.statusCode == 401
+            ? NoAuthFailure.sessionInvalid
+            : NoAuthFailure.unknown,
+      );
     }
   }
 

@@ -185,10 +185,12 @@ class SwitchEndpointNoAuthView extends HookConsumerWidget {
       NoAuthFailure.tokenExchangeFailed => S
           .of(context)
           .failedToObtainLoginTokenFromHost(state.host ?? ''),
+      // The server answers a revoked pair with "Token has expired": hardcoded
+      // English, and wrong about the cause.
       NoAuthFailure.sessionInvalid =>
         S.of(context).qrCodeSessionIsNoLongerValid,
-      // Server messages are hardcoded English (and "Token has expired" for a
-      // revoked pair): the last resort, not the first choice.
+      // Server messages are hardcoded English: the last resort, not the first
+      // choice.
       NoAuthFailure.unknown || null =>
         (serverMessage != null && serverMessage.isNotEmpty)
             ? serverMessage
